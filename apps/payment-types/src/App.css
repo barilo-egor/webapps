@@ -1,0 +1,759 @@
+/* =========================================================
+   ТЕМА: используем переменные Telegram WebApp.
+   Если работаем вне Telegram — fallback на системную.
+   ========================================================= */
+:root {
+  --tg-bg: var(--tg-theme-bg-color, #ffffff);
+  --tg-text: var(--tg-theme-text-color, #1a1a1a);
+  --tg-hint: var(--tg-theme-hint-color, #8a8a8a);
+  --tg-link: var(--tg-theme-link-color, #2563eb);
+  --tg-btn: var(--tg-theme-button-color, #2563eb);
+  --tg-btn-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+  --tg-section-bg: var(--tg-theme-section-bg-color, #ffffff);
+
+  --accent: var(--tg-btn);
+  --accent-hover: color-mix(in srgb, var(--tg-btn) 85%, black);
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --danger-bg: color-mix(in srgb, #dc2626 10%, transparent);
+
+  --border: color-mix(in srgb, var(--tg-text) 14%, transparent);
+  --border-strong: color-mix(in srgb, var(--tg-text) 26%, transparent);
+  --row-hover: color-mix(in srgb, var(--tg-text) 5%, transparent);
+  --shadow-sm: 0 1px 2px color-mix(in srgb, var(--tg-text) 8%, transparent);
+  --shadow-md: 0 4px 16px color-mix(in srgb, var(--tg-text) 10%, transparent);
+  --shadow-lg: 0 12px 40px color-mix(in srgb, var(--tg-text) 18%, transparent);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+body {
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+.app {
+  min-height: 100vh;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* =========================================================
+   HEADER (заголовок страницы + кнопка «+»)
+   ========================================================= */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--tg-text);
+}
+
+.page-header h1 i {
+  color: var(--accent);
+  font-size: 22px;
+}
+
+.btn-add {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: var(--tg-btn-text);
+  font-size: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-add:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.btn-add:active { transform: scale(0.95); }
+.btn-add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   STATES (loading / empty / error)
+   ========================================================= */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 56px 20px;
+  color: var(--tg-hint);
+  text-align: center;
+  background: var(--tg-secondary-bg);
+  border-radius: var(--radius);
+}
+
+.state i {
+  font-size: 36px;
+  opacity: 0.6;
+}
+
+.state span { font-size: 15px; }
+
+.state-error i { color: var(--danger); opacity: 0.85; }
+.state-error { color: var(--tg-text); }
+
+/* =========================================================
+   ТАБЛИЦА КОНТАКТОВ
+   ========================================================= */
+.table-wrapper {
+  background: var(--tg-section-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.contacts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.contacts-table thead th {
+  text-align: left;
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tg-hint);
+  background: var(--tg-secondary-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.contacts-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s ease;
+}
+
+.contacts-table tbody tr.row-editable {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Внутри ссылки и кнопки — нормальный курсор и возможность выделять */
+.contacts-table tbody tr.row-editable a,
+.contacts-table tbody tr.row-editable button {
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+.contacts-table tbody tr:last-child { border-bottom: none; }
+.contacts-table tbody tr:hover { background: var(--row-hover); }
+
+.contacts-table td {
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+
+.cell-name {
+  font-weight: 600;
+  color: var(--tg-text);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-url {
+  max-width: 300px;
+}
+
+.cell-url a {
+  color: var(--tg-link);
+  text-decoration: none;
+  word-break: break-all;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.cell-url a:hover { text-decoration: underline; }
+
+.col-action,
+.cell-action {
+  width: 48px;
+  text-align: center;
+  padding-right: 14px !important;
+}
+
+.btn-delete {
+  background: transparent;
+  border: none;
+  color: var(--danger);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.1s ease;
+  line-height: 1;
+}
+
+.btn-delete:hover {
+  background: var(--danger-bg);
+  color: var(--danger-hover);
+}
+
+.btn-delete:active { transform: scale(0.9); }
+
+.btn-delete:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeIn 0.18s ease;
+}
+
+.modal {
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: modalIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.modal-sm { max-width: 380px; }
+
+.modal-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--tg-secondary-bg);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-header h2 i { color: var(--accent); }
+
+.modal-header-danger h2 i { color: var(--danger); }
+
+.modal-body { padding: 20px; }
+.modal-body .confirm-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--tg-text);
+}
+
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--tg-bg);
+}
+
+/* Form fields */
+.field {
+  margin-bottom: 16px;
+}
+
+.field:last-child { margin-bottom: 0; }
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--tg-text);
+}
+
+.field .required { color: var(--danger); }
+
+.field input {
+  width: 100%;
+  padding: 11px 13px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--tg-text);
+  background: var(--tg-secondary-bg);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.field input::placeholder { color: var(--tg-hint); }
+
+.field input:focus {
+  border-color: var(--accent);
+  background: var(--tg-bg);
+}
+
+.field input.invalid {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 6%, var(--tg-secondary-bg));
+}
+
+.field input.invalid:focus {
+  border-color: var(--danger);
+}
+
+.hint {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.hint-error { color: var(--danger); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn:not(:disabled):active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--tg-btn-text);
+}
+
+.btn-primary:not(:disabled):hover { background: var(--accent-hover); }
+
+.btn-secondary {
+  background: var(--tg-secondary-bg);
+  color: var(--tg-text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:not(:disabled):hover {
+  background: var(--row-hover);
+  border-color: var(--border-strong);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:not(:disabled):hover { background: var(--danger-hover); }
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+@media (max-width: 520px) {
+  .app { padding: 12px; }
+  .page-header h1 { font-size: 18px; }
+  .page-header h1 i { font-size: 20px; }
+
+  .contacts-table { font-size: 13px; }
+  .contacts-table thead th,
+  .contacts-table td { padding: 10px 10px; }
+
+  .cell-name { max-width: 110px; }
+  .cell-url  { max-width: 160px; }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+  .modal-footer .btn { width: 100%; }
+}
+
+/* =========================================================
+   PAYMENT-TYPES specific styles
+   ========================================================= */
+
+/* Кнопка "Создать" в шапке (с текстом, не круглая как в contacts) */
+.btn-create {
+  flex-shrink: 0;
+}
+
+/* Сворачиваемые блоки для типов сделки */
+.section {
+  background: var(--tg-section-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.section:last-child { margin-bottom: 0; }
+
+.section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--tg-secondary-bg);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tg-text);
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.section-header:hover { background: var(--row-hover); }
+
+.section-chevron {
+  font-size: 12px;
+  color: var(--tg-hint);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.section-chevron.open { transform: rotate(90deg); }
+
+.section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.section-title i { color: var(--accent); }
+
+.section-hint {
+  margin-left: auto;
+  color: var(--tg-hint);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: right;
+}
+
+.section-body { background: var(--tg-section-bg); }
+
+.section-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--tg-hint);
+  font-size: 14px;
+}
+
+/* Таблица типов оплаты (отличия от contacts-table) */
+.pt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.pt-table thead th {
+  text-align: left;
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tg-hint);
+  background: var(--tg-secondary-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.pt-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s ease;
+}
+
+.pt-table tbody tr:last-child { border-bottom: none; }
+.pt-table tbody tr:hover { background: var(--row-hover); }
+
+.pt-table tbody tr.row-editable {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pt-table tbody tr.row-editable input,
+.pt-table tbody tr.row-editable button {
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+.pt-table td {
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+
+.pt-table .col-toggle,
+.pt-table .cell-toggle {
+  width: 90px;
+  text-align: center;
+}
+
+.pt-table .cell-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.pt-table .cell-name {
+  font-weight: 600;
+  color: var(--tg-text);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Большая модалка для формы с многими полями */
+.modal-lg { max-width: 560px; }
+
+/* Header у поля (для блока скидок: label + кнопка плюса справа) */
+.field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.field-header label {
+  margin-bottom: 0;
+}
+
+.btn-icon-add {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.btn-icon-add:hover { background: #059669; }
+.btn-icon-add:active { transform: scale(0.92); }
+
+.btn-icon-delete {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--danger);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background 0.15s ease;
+}
+
+.btn-icon-delete:hover { background: var(--danger-bg); }
+
+/* Иконка в label полей формы */
+.field label i {
+  color: var(--accent);
+  margin-right: 6px;
+}
+
+/* Select и textarea — стиль такой же как у input */
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 11px 13px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--tg-text);
+  background: var(--tg-secondary-bg);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--accent);
+  background: var(--tg-bg);
+}
+
+.field select.invalid {
+  border-color: var(--danger);
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+/* Таблица скидок внутри модалки */
+.discounts-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--tg-section-bg);
+}
+
+.discounts-thead {
+  display: grid;
+  grid-template-columns: 1fr 1fr 36px;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--tg-secondary-bg);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tg-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.discounts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 36px;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+
+.discounts-row:first-child { border-top: none; }
+
+.discounts-row input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--tg-text);
+  background: var(--tg-secondary-bg);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.discounts-row input:focus {
+  border-color: var(--accent);
+  background: var(--tg-bg);
+}
+
+.discounts-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--tg-hint);
+  font-size: 13px;
+}
+
+/* Адаптация для мобильного */
+@media (max-width: 520px) {
+  .section-hint {
+    display: none;
+  }
+  .pt-table thead th,
+  .pt-table td {
+    padding: 10px 8px;
+  }
+  .pt-table .col-toggle,
+  .pt-table .cell-toggle {
+    width: 60px;
+  }
+  .pt-table .cell-name {
+    max-width: 100px;
+  }
+  .btn-create span { display: none; }
+}
