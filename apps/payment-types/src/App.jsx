@@ -60,6 +60,9 @@ const realApi = {
   remove: (pid) => apiFetch(`${API_BASE}/${pid}`, { method: 'DELETE' }),
   toggleActive: (pid, isOn) =>
     apiFetch(`${API_BASE}/${pid}/activation?isOn=${isOn}`, { method: 'PATCH' }),
+  // Валюты приходят как [{name, displayName}, ...]:
+  // в UI показываем displayName, на бэк шлём name.
+  listFiats: () => apiFetch('/api/constants/fiat'),
 };
 
 // =============================================================
@@ -154,6 +157,18 @@ const mockApi = {
     mockData[idx] = { ...mockData[idx], isOn };
     return mockData[idx];
   },
+  listFiats: async () => {
+    await delay(100);
+    // Возвращаем тот же формат что и реальный бэк: [{name, displayName}, ...]
+    return [
+      { name: 'RUB', displayName: 'Рус. руб' },
+      { name: 'BYN', displayName: 'Бел. руб' },
+      { name: 'USD', displayName: 'Доллар США' },
+      { name: 'EUR', displayName: 'Евро' },
+      { name: 'KZT', displayName: 'Тенге' },
+      { name: 'UAH', displayName: 'Гривна' },
+    ];
+  },
 };
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === '1';
@@ -166,10 +181,8 @@ if (USE_MOCK) {
 
 // =============================================================
 // СПРАВОЧНИКИ
-// =============================================================
-// Список валют. Когда бэк сделает endpoint — заменить на динамический GET.
-const FIAT_CURRENCIES = ['RUB', 'BYN', 'USD', 'EUR', 'KZT', 'UAH'];
-
+// Валюты получаются с бэка через GET /api/constants/fiat — список объектов
+// [{name, displayName}]. В UI показывается displayName, на бэк шлётся name.
 const DEAL_TYPES = [
   { value: 'BUY', label: 'Покупка', icon: 'fa-shopping-cart' },
   { value: 'SELL', label: 'Продажа', icon: 'fa-tag' },
@@ -178,24 +191,28 @@ const DEAL_TYPES = [
 // =============================================================
 // MODAL: создание/редактирование типа оплаты
 // =============================================================
-function PaymentTypeFormModal({ initial, onClose, onSubmit, isSubmitting }) {
+function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting }) {
   const isEdit = Boolean(initial?.pid);
 
   const [dealType, setDealType] = useState(initial?.dealType || 'SELL');
   const [name, setName] = useState(initial?.name || '');
   const [fiatCurrency, setFiatCurrency] = useState(
-    initial?.fiatCurrency || FIAT_CURRENCIES[0]
+    initial?.fiatCurrency || (fiats && fiats[0]?.name) || ''
   );
   const [minSum, setMinSum] = useState(
     initial?.minSum != null ? String(initial.minSum) : ''
   );
+  // При создании — пустой массив (показывается "Скидок нет").
+  // При редактировании — сортируем по maxAmount по возрастанию.
   const [discounts, setDiscounts] = useState(
     initial?.discounts && initial.discounts.length > 0
-      ? initial.discounts.map((d) => ({
+      ? [...initial.discounts]
+          .sort((a, b) => (Number(a.maxAmount) || 0) - (Number(b.maxAmount) || 0))
+          .map((d) => ({
           percent: d.percent != null ? String(d.percent) : '',
           maxAmount: d.maxAmount != null ? String(d.maxAmount) : '',
         }))
-      : [{ percent: '', maxAmount: '' }]
+      : []
   );
   const [additionalText, setAdditionalText] = useState(
     initial?.requisiteAdditionalText || ''
@@ -333,9 +350,9 @@ function PaymentTypeFormModal({ initial, onClose, onSubmit, isSubmitting }) {
               }}
               className={errors.fiatCurrency ? 'invalid' : ''}
             >
-              {FIAT_CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {(fiats || []).map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.displayName}
                 </option>
               ))}
             </select>
@@ -397,18 +414,19 @@ function PaymentTypeFormModal({ initial, onClose, onSubmit, isSubmitting }) {
                     placeholder="%"
                     inputMode="decimal"
                     min="0"
-                    step="0.01"
+                    step="0.1"
                   />
                   <input
-                    type="number"
+                    type="text"
                     value={d.maxAmount}
-                    onChange={(e) =>
-                      handleDiscountChange(idx, 'maxAmount', e.target.value)
-                    }
+                    onChange={(e) => {
+                      const v = e.target.value.replace(',', '.');
+                      if (v === '' || /^\d*\.?\d*$/.test(v)) {
+                        handleDiscountChange(idx, 'maxAmount', v);
+                      }
+                    }}
                     placeholder="Макс. сумма"
                     inputMode="decimal"
-                    min="0"
-                    step="0.01"
                   />
                   <button
                     type="button"
@@ -546,6 +564,7 @@ function DeleteConfirmModal({ item, onClose, onConfirm, isSubmitting }) {
 function TableSection({
   dealType,
   items,
+  fiats,
   open,
   onToggleOpen,
   onRowDoubleClick,
@@ -553,6 +572,12 @@ function TableSection({
   onRowDelete,
 }) {
   const meta = DEAL_TYPES.find((t) => t.value === dealType);
+  // Карта name -> displayName для показа человекопонятных названий валют
+  const fiatLabel = (name) => {
+    if (!name) return '';
+    const f = (fiats || []).find((x) => x.name === name);
+    return f ? f.displayName : name;
+  };
   return (
     <div className={`section ${open ? 'section-open' : ''}`}>
       <button
@@ -616,7 +641,7 @@ function TableSection({
                       <td className="cell-name" title={it.name}>
                         {it.name}
                       </td>
-                      <td>{it.fiatCurrency}</td>
+                      <td>{fiatLabel(it.fiatCurrency)}</td>
                       <td>{formatNumber(it.minSum)}</td>
                       <td className="cell-action">
                         <button
@@ -671,6 +696,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Список валют с бэка [{name, displayName}, ...]
+  const [fiats, setFiats] = useState([]);
+
   const [editing, setEditing] = useState(null); // null | 'new' | объект
   const [toDelete, setToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -684,6 +712,18 @@ export default function App() {
       tg.ready();
       tg.expand();
     }
+  }, []);
+
+  // Загружаем справочник валют один раз при mount
+  useEffect(() => {
+    paymentTypesApi
+      .listFiats()
+      .then((data) => setFiats(Array.isArray(data) ? data : []))
+      .catch(() => {
+        // Если справочник не загрузился — не показываем ошибку, просто
+        // dropdown будет пустой. Юзер увидит проблему при попытке создать.
+        setFiats([]);
+      });
   }, []);
 
   const loadItems = useCallback(async () => {
@@ -822,6 +862,7 @@ export default function App() {
               <TableSection
                 dealType="BUY"
                 items={buyItems}
+                fiats={fiats}
                 open={openSections.BUY}
                 onToggleOpen={() =>
                   setOpenSections((s) => ({ ...s, BUY: !s.BUY }))
@@ -833,6 +874,7 @@ export default function App() {
               <TableSection
                 dealType="SELL"
                 items={sellItems}
+                fiats={fiats}
                 open={openSections.SELL}
                 onToggleOpen={() =>
                   setOpenSections((s) => ({ ...s, SELL: !s.SELL }))
@@ -849,6 +891,7 @@ export default function App() {
       {editing && (
         <PaymentTypeFormModal
           initial={editing === 'new' ? null : editing}
+          fiats={fiats}
           onClose={() => !isSubmitting && setEditing(null)}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}

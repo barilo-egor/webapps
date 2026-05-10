@@ -2,6 +2,11 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  // Относительные пути в собранном index.html.
+  // Будет: <script src="./assets/index-XXX.js"> вместо /assets/...
+  // Это работает с любого URL, без правок руками.
+  base: './',
+
   plugins: [react()],
   server: {
     port: 5173,
