@@ -543,6 +543,8 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  /* table-layout: fixed — позволяет управлять шириной колонок через width у th */
+  table-layout: fixed;
 }
 
 .pt-table thead th {
@@ -555,6 +557,7 @@ body {
   color: var(--tg-hint);
   background: var(--tg-secondary-bg);
   border-bottom: 1px solid var(--border);
+  position: relative;
 }
 
 .pt-table tbody tr {
@@ -582,9 +585,23 @@ body {
   vertical-align: middle;
 }
 
+/* Обрезка с многоточием — только для текстовых ячеек.
+   Не применяем к ячейкам с кнопками (cell-toggle, cell-action),
+   иначе кнопка обрезается и появляется "..." */
+.pt-table .cell-name,
+.pt-table .cell-fiat,
+.pt-table .cell-minsum {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Фиксированные ширины колонок: значения берутся из CSS-переменных,
+   которые задаются в <table style={...}>. Колонка "Название" — без width,
+   она занимает всё оставшееся пространство и расширяется при ресайзе окна. */
 .pt-table .col-toggle,
 .pt-table .cell-toggle {
-  width: 56px;
+  width: var(--col-toggle, 56px);
   text-align: center;
   padding-left: 6px;
   padding-right: 6px;
@@ -594,6 +611,16 @@ body {
 .pt-table .col-toggle i {
   font-size: 14px;
   color: var(--tg-hint);
+}
+
+.pt-table .col-fiat,
+.pt-table .cell-fiat {
+  width: var(--col-fiat, 90px);
+}
+
+.pt-table .col-minsum,
+.pt-table .cell-minsum {
+  width: var(--col-minsum, 96px);
 }
 
 .pt-table .cell-toggle input[type="checkbox"] {
@@ -607,10 +634,24 @@ body {
 .pt-table .cell-name {
   font-weight: 600;
   color: var(--tg-text);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+/* Разделитель колонок: узкая невидимая полоска справа от заголовка.
+   При наведении подсвечивается, можно тащить мышкой. */
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.col-resize-handle:hover {
+  background: var(--accent);
+  opacity: 0.4;
 }
 
 /* Большая модалка для формы с многими полями */
@@ -763,14 +804,12 @@ body {
   }
   .pt-table thead th,
   .pt-table td {
-    padding: 10px 8px;
-  }
-  .pt-table .col-toggle,
-  .pt-table .cell-toggle {
-    width: 50px;
-  }
-  .pt-table .cell-name {
-    max-width: 100px;
+    padding: 10px 6px;
+    font-size: 12px;
   }
   .btn-create span { display: none; }
+  /* На мобильном пальцем разделители колонок сложно ловить — прячем их */
+  .col-resize-handle {
+    display: none;
+  }
 }
