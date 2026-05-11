@@ -166,6 +166,23 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+/* Заголовок столбца с подсказкой справа в той же ячейке */
+.th-with-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.th-hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--tg-hint);
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: right;
+}
+
 .contacts-table tbody tr {
   border-bottom: 1px solid var(--border);
   transition: background 0.12s ease;
@@ -448,6 +465,9 @@ body {
 
   .cell-name { max-width: 110px; }
   .cell-url  { max-width: 160px; }
+
+  /* На узких экранах подсказка перестаёт помещаться — прячем */
+  .th-hint { display: none; }
 
   .modal-footer {
     flex-direction: column-reverse;

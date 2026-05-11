@@ -276,8 +276,11 @@ body {
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 440px;
+  max-height: 90vh;          /* не вылезаем за пределы экрана */
+  display: flex;
+  flex-direction: column;    /* шапка / тело / футер вертикально */
   box-shadow: var(--shadow-lg);
-  overflow: hidden;
+  overflow: hidden;          /* скруглённые углы режут содержимое */
   animation: modalIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -287,6 +290,7 @@ body {
   padding: 18px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--tg-secondary-bg);
+  flex-shrink: 0;            /* шапка не сжимается, не прокручивается */
 }
 
 .modal-header h2 {
@@ -302,7 +306,11 @@ body {
 
 .modal-header-danger h2 i { color: var(--danger); }
 
-.modal-body { padding: 20px; }
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;          /* прокручивается только тело */
+  flex: 1 1 auto;            /* занимает оставшееся место */
+}
 .modal-body .confirm-text {
   margin: 0;
   font-size: 15px;
@@ -317,6 +325,7 @@ body {
   justify-content: flex-end;
   gap: 10px;
   background: var(--tg-bg);
+  flex-shrink: 0;            /* футер с кнопками всегда виден внизу */
 }
 
 /* Form fields */
@@ -575,8 +584,16 @@ body {
 
 .pt-table .col-toggle,
 .pt-table .cell-toggle {
-  width: 90px;
+  width: 56px;
   text-align: center;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* Иконка power-off в заголовке колонки "Включение" */
+.pt-table .col-toggle i {
+  font-size: 14px;
+  color: var(--tg-hint);
 }
 
 .pt-table .cell-toggle input[type="checkbox"] {
@@ -750,7 +767,7 @@ body {
   }
   .pt-table .col-toggle,
   .pt-table .cell-toggle {
-    width: 60px;
+    width: 50px;
   }
   .pt-table .cell-name {
     max-width: 100px;
