@@ -60,15 +60,15 @@ const apiFetch = async (url, options = {}) => {
 const contactsApi = {
   list: () => apiFetch(API_BASE),
   create: (data) =>
-    apiFetch(API_BASE, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+      apiFetch(API_BASE, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   update: (data) =>
-    apiFetch(API_BASE, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
+      apiFetch(API_BASE, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
   remove: (pid) => apiFetch(`${API_BASE}/${pid}`, { method: 'DELETE' }),
 };
 
@@ -111,99 +111,99 @@ function ContactFormModal({ initial, onClose, onSubmit, isSubmitting }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
-      <div
-        className="modal"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="contact-form-title"
-      >
-        <div className="modal-header">
-          <h2 id="contact-form-title">
-            <i
-              className={isEdit ? 'fas fa-pen-to-square' : 'fas fa-user-plus'}
-              aria-hidden="true"
-            ></i>
-            {isEdit ? 'Редактирование контакта' : 'Новый контакт'}
-          </h2>
-        </div>
-
-        <div className="modal-body">
-          <div className="field">
-            <label htmlFor="contact-label">
-              Название <span className="required">*</span>
-            </label>
-            <input
-              id="contact-label"
-              type="text"
-              value={label}
-              onChange={(e) => {
-                setLabel(e.target.value);
-                if (errors.label) setErrors((p) => ({ ...p, label: false }));
-              }}
-              className={errors.label ? 'invalid' : ''}
-              placeholder="Например: Поддержка"
-              autoFocus
-              maxLength={255}
-            />
+      <div className="modal-overlay" onClick={onClose} role="presentation">
+        <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="contact-form-title"
+        >
+          <div className="modal-header">
+            <h2 id="contact-form-title">
+              <i
+                  className={isEdit ? 'fas fa-pen-to-square' : 'fas fa-user-plus'}
+                  aria-hidden="true"
+              ></i>
+              {isEdit ? 'Редактирование контакта' : 'Новый контакт'}
+            </h2>
           </div>
 
-          <div className="field">
-            <label htmlFor="contact-url">
-              Ссылка <span className="required">*</span>
-            </label>
-            <input
-              id="contact-url"
-              type="url"
-              value={url}
-              onChange={(e) => {
-                setUrl(e.target.value);
-                if (errors.url) setErrors((p) => ({ ...p, url: false }));
-              }}
-              className={errors.url ? 'invalid' : ''}
-              placeholder="https://example.com"
-              inputMode="url"
-              maxLength={2048}
-            />
-            {errors.url && url.trim() && !isValidUrl(url.trim()) && (
-              <div className="hint hint-error">
-                Введите корректный URL (https://)
-              </div>
-            )}
-          </div>
-        </div>
+          <div className="modal-body">
+            <div className="field">
+              <label htmlFor="contact-label">
+                Название <span className="required">*</span>
+              </label>
+              <input
+                  id="contact-label"
+                  type="text"
+                  value={label}
+                  onChange={(e) => {
+                    setLabel(e.target.value);
+                    if (errors.label) setErrors((p) => ({ ...p, label: false }));
+                  }}
+                  className={errors.label ? 'invalid' : ''}
+                  placeholder="Например: Поддержка"
+                  autoFocus
+                  maxLength={255}
+              />
+            </div>
 
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            Отмена
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleSave}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
-                Сохранение...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-check" aria-hidden="true"></i>
-                Сохранить
-              </>
-            )}
-          </button>
+            <div className="field">
+              <label htmlFor="contact-url">
+                Ссылка <span className="required">*</span>
+              </label>
+              <input
+                  id="contact-url"
+                  type="url"
+                  value={url}
+                  onChange={(e) => {
+                    setUrl(e.target.value);
+                    if (errors.url) setErrors((p) => ({ ...p, url: false }));
+                  }}
+                  className={errors.url ? 'invalid' : ''}
+                  placeholder="https://example.com"
+                  inputMode="url"
+                  maxLength={2048}
+              />
+              {errors.url && url.trim() && !isValidUrl(url.trim()) && (
+                  <div className="hint hint-error">
+                    Введите корректный URL (https://)
+                  </div>
+              )}
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onClose}
+                disabled={isSubmitting}
+            >
+              Отмена
+            </button>
+            <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSave}
+                disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                    Сохранение...
+                  </>
+              ) : (
+                  <>
+                    <i className="fas fa-check" aria-hidden="true"></i>
+                    Сохранить
+                  </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -212,58 +212,58 @@ function ContactFormModal({ initial, onClose, onSubmit, isSubmitting }) {
 // =============================================================
 function DeleteConfirmModal({ contact, onClose, onConfirm, isSubmitting }) {
   return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
-      <div
-        className="modal modal-sm"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="delete-confirm-title"
-      >
-        <div className="modal-header modal-header-danger">
-          <h2 id="delete-confirm-title">
-            <i className="fas fa-exclamation-triangle" aria-hidden="true"></i>
-            Подтверждение
-          </h2>
-        </div>
+      <div className="modal-overlay" onClick={onClose} role="presentation">
+        <div
+            className="modal modal-sm"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-confirm-title"
+        >
+          <div className="modal-header modal-header-danger">
+            <h2 id="delete-confirm-title">
+              <i className="fas fa-exclamation-triangle" aria-hidden="true"></i>
+              Подтверждение
+            </h2>
+          </div>
 
-        <div className="modal-body">
-          <p className="confirm-text">
-            Вы уверены, что хотите удалить контакт{' '}
-            <strong>«{contact.label}»</strong>?
-          </p>
-        </div>
+          <div className="modal-body">
+            <p className="confirm-text">
+              Вы уверены, что хотите удалить контакт{' '}
+              <strong>«{contact.label}»</strong>?
+            </p>
+          </div>
 
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            Отмена
-          </button>
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={onConfirm}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
-                Удаление...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-trash" aria-hidden="true"></i>
-                Да, удалить
-              </>
-            )}
-          </button>
+          <div className="modal-footer">
+            <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onClose}
+                disabled={isSubmitting}
+            >
+              Отмена
+            </button>
+            <button
+                type="button"
+                className="btn btn-danger"
+                onClick={onConfirm}
+                disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                    Удаление...
+                  </>
+              ) : (
+                  <>
+                    <i className="fas fa-trash" aria-hidden="true"></i>
+                    Да, удалить
+                  </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -331,8 +331,8 @@ export default function App() {
       // Если бэк вернул обновлённый объект — берём его, иначе подставляем то,
       // что отправили (бэк мог ответить пустым success-телом).
       const next = updated && updated.pid != null
-        ? updated
-        : { pid, label, url };
+          ? updated
+          : { pid, label, url };
       setContacts((prev) => prev.map((c) => (c.pid === pid ? next : c)));
       setContactToEdit(null);
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('success');
@@ -361,131 +361,138 @@ export default function App() {
   };
 
   return (
-    <div className="app">
-      <div className="container">
-        <header className="page-header">
-          <h1>
-            <i className="fas fa-address-book" aria-hidden="true"></i>
-            Управление контактами
-          </h1>
-          <button
-            type="button"
-            className="btn-add"
-            onClick={() => setShowAddModal(true)}
-            aria-label="Добавить контакт"
-            title="Добавить контакт"
-          >
-            <i className="fas fa-plus" aria-hidden="true"></i>
-          </button>
-        </header>
+      <div className="app">
+        <div className="container">
+          <header className="page-header">
+            <h1>
+              <i className="fas fa-address-book" aria-hidden="true"></i>
+              Управление контактами
+            </h1>
+            <button
+                type="button"
+                className="btn-add"
+                onClick={() => setShowAddModal(true)}
+                aria-label="Добавить контакт"
+                title="Добавить контакт"
+            >
+              <i className="fas fa-plus" aria-hidden="true"></i>
+            </button>
+          </header>
 
-        <main className="content">
-          {loading && (
-            <div className="state state-loading">
-              <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
-              <span>Загрузка...</span>
-            </div>
-          )}
+          <main className="content">
+            {loading && (
+                <div className="state state-loading">
+                  <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <span>Загрузка...</span>
+                </div>
+            )}
 
-          {!loading && error && (
-            <div className="state state-error">
-              <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>
-              <span>{error}</span>
-              <button className="btn btn-secondary" onClick={loadContacts}>
-                <i className="fas fa-rotate" aria-hidden="true"></i>
-                Повторить
-              </button>
-            </div>
-          )}
+            {!loading && error && (
+                <div className="state state-error">
+                  <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                  <span>{error}</span>
+                  <button className="btn btn-secondary" onClick={loadContacts}>
+                    <i className="fas fa-rotate" aria-hidden="true"></i>
+                    Повторить
+                  </button>
+                </div>
+            )}
 
-          {!loading && !error && contacts.length === 0 && (
-            <div className="state state-empty">
-              <i className="fas fa-inbox" aria-hidden="true"></i>
-              <span>Нет контактов</span>
-            </div>
-          )}
+            {!loading && !error && contacts.length === 0 && (
+                <div className="state state-empty">
+                  <i className="fas fa-inbox" aria-hidden="true"></i>
+                  <span>Нет контактов</span>
+                </div>
+            )}
 
-          {!loading && !error && contacts.length > 0 && (
-            <div className="table-wrapper">
-              <table className="contacts-table">
-                <thead>
-                  <tr>
-                    <th>Название</th>
-                    <th>Ссылка</th>
-                    <th aria-label="Удаление" className="col-action"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {contacts.map((c) => (
-                    <tr
-                      key={c.pid}
-                      className="row-editable"
-                      onDoubleClick={() => setContactToEdit(c)}
-                      title="Двойной клик — редактировать"
-                    >
-                      <td className="cell-name" title={c.label}>
-                        {c.label}
-                      </td>
-                      <td className="cell-url">
-                        <a
-                          href={c.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={c.url}
-                          onDoubleClick={(e) => e.stopPropagation()}
-                        >
-                          {c.url}
-                        </a>
-                      </td>
-                      <td className="cell-action">
-                        <button
-                          type="button"
-                          className="btn-delete"
-                          onClick={() => setContactToDelete(c)}
-                          onDoubleClick={(e) => e.stopPropagation()}
-                          aria-label={`Удалить контакт ${c.label}`}
-                          title="Удалить"
-                        >
-                          <i
-                            className="fas fa-times-circle"
-                            aria-hidden="true"
-                          ></i>
-                        </button>
-                      </td>
+            {!loading && !error && contacts.length > 0 && (
+                <div className="table-wrapper">
+                  <table className="contacts-table">
+                    <thead>
+                    <tr>
+                      <th>Название</th>
+                      <th>
+                        <div className="th-with-hint">
+                          <span>Ссылка</span>
+                          <span className="th-hint">
+                          Для редактирования дважды кликните по строке контакта.
+                        </span>
+                        </div>
+                      </th>
+                      <th aria-label="Удаление" className="col-action"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </main>
+                    </thead>
+                    <tbody>
+                    {contacts.map((c) => (
+                        <tr
+                            key={c.pid}
+                            className="row-editable"
+                            onDoubleClick={() => setContactToEdit(c)}
+                            title="Двойной клик — редактировать"
+                        >
+                          <td className="cell-name" title={c.label}>
+                            {c.label}
+                          </td>
+                          <td className="cell-url">
+                            <a
+                                href={c.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={c.url}
+                                onDoubleClick={(e) => e.stopPropagation()}
+                            >
+                              {c.url}
+                            </a>
+                          </td>
+                          <td className="cell-action">
+                            <button
+                                type="button"
+                                className="btn-delete"
+                                onClick={() => setContactToDelete(c)}
+                                onDoubleClick={(e) => e.stopPropagation()}
+                                aria-label={`Удалить контакт ${c.label}`}
+                                title="Удалить"
+                            >
+                              <i
+                                  className="fas fa-times-circle"
+                                  aria-hidden="true"
+                              ></i>
+                            </button>
+                          </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                  </table>
+                </div>
+            )}
+          </main>
+        </div>
+
+        {showAddModal && (
+            <ContactFormModal
+                onClose={() => !isSubmitting && setShowAddModal(false)}
+                onSubmit={handleAddContact}
+                isSubmitting={isSubmitting}
+            />
+        )}
+
+        {contactToEdit && (
+            <ContactFormModal
+                initial={contactToEdit}
+                onClose={() => !isSubmitting && setContactToEdit(null)}
+                onSubmit={handleEditContact}
+                isSubmitting={isSubmitting}
+            />
+        )}
+
+        {contactToDelete && (
+            <DeleteConfirmModal
+                contact={contactToDelete}
+                onClose={() => !isSubmitting && setContactToDelete(null)}
+                onConfirm={handleDeleteContact}
+                isSubmitting={isSubmitting}
+            />
+        )}
       </div>
-
-      {showAddModal && (
-        <ContactFormModal
-          onClose={() => !isSubmitting && setShowAddModal(false)}
-          onSubmit={handleAddContact}
-          isSubmitting={isSubmitting}
-        />
-      )}
-
-      {contactToEdit && (
-        <ContactFormModal
-          initial={contactToEdit}
-          onClose={() => !isSubmitting && setContactToEdit(null)}
-          onSubmit={handleEditContact}
-          isSubmitting={isSubmitting}
-        />
-      )}
-
-      {contactToDelete && (
-        <DeleteConfirmModal
-          contact={contactToDelete}
-          onClose={() => !isSubmitting && setContactToDelete(null)}
-          onConfirm={handleDeleteContact}
-          isSubmitting={isSubmitting}
-        />
-      )}
-    </div>
   );
 }

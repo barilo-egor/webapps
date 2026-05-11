@@ -54,12 +54,12 @@ const apiFetch = async (url, options = {}) => {
 const realApi = {
   list: () => apiFetch(API_BASE),
   create: (data) =>
-    apiFetch(API_BASE, { method: 'POST', body: JSON.stringify(data) }),
+      apiFetch(API_BASE, { method: 'POST', body: JSON.stringify(data) }),
   update: (data) =>
-    apiFetch(API_BASE, { method: 'PATCH', body: JSON.stringify(data) }),
+      apiFetch(API_BASE, { method: 'PATCH', body: JSON.stringify(data) }),
   remove: (pid) => apiFetch(`${API_BASE}/${pid}`, { method: 'DELETE' }),
   toggleActive: (pid, isOn) =>
-    apiFetch(`${API_BASE}/${pid}/activation?isOn=${isOn}`, { method: 'PATCH' }),
+      apiFetch(`${API_BASE}/${pid}/activation?isOn=${isOn}`, { method: 'PATCH' }),
   // Валюты приходят как [{name, displayName}, ...]:
   // в UI показываем displayName, на бэк шлём name.
   listFiats: () => apiFetch('/api/constants/fiat'),
@@ -197,25 +197,25 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
   const [dealType, setDealType] = useState(initial?.dealType || 'SELL');
   const [name, setName] = useState(initial?.name || '');
   const [fiatCurrency, setFiatCurrency] = useState(
-    initial?.fiatCurrency || (fiats && fiats[0]?.name) || ''
+      initial?.fiatCurrency || (fiats && fiats[0]?.name) || ''
   );
   const [minSum, setMinSum] = useState(
-    initial?.minSum != null ? String(initial.minSum) : ''
+      initial?.minSum != null ? String(initial.minSum) : ''
   );
   // При создании — пустой массив (показывается "Скидок нет").
   // При редактировании — сортируем по maxAmount по возрастанию.
   const [discounts, setDiscounts] = useState(
-    initial?.discounts && initial.discounts.length > 0
-      ? [...initial.discounts]
-          .sort((a, b) => (Number(a.maxAmount) || 0) - (Number(b.maxAmount) || 0))
-          .map((d) => ({
-          percent: d.percent != null ? String(d.percent) : '',
-          maxAmount: d.maxAmount != null ? String(d.maxAmount) : '',
-        }))
-      : []
+      initial?.discounts && initial.discounts.length > 0
+          ? [...initial.discounts]
+              .sort((a, b) => (Number(a.maxAmount) || 0) - (Number(b.maxAmount) || 0))
+              .map((d) => ({
+                percent: d.percent != null ? String(d.percent) : '',
+                maxAmount: d.maxAmount != null ? String(d.maxAmount) : '',
+              }))
+          : []
   );
   const [additionalText, setAdditionalText] = useState(
-    initial?.requisiteAdditionalText || ''
+      initial?.requisiteAdditionalText || ''
   );
   const [errors, setErrors] = useState({
     name: false,
@@ -233,7 +233,7 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
 
   const handleDiscountChange = (idx, field, value) => {
     setDiscounts((prev) =>
-      prev.map((d, i) => (i === idx ? { ...d, [field]: value } : d))
+        prev.map((d, i) => (i === idx ? { ...d, [field]: value } : d))
     );
   };
 
@@ -250,11 +250,11 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
 
     // Чистим скидки: убираем строки где оба поля пустые
     const cleanDiscounts = discounts
-      .filter((d) => d.percent !== '' || d.maxAmount !== '')
-      .map((d) => ({
-        percent: Number(d.percent),
-        maxAmount: Number(d.maxAmount),
-      }));
+        .filter((d) => d.percent !== '' || d.maxAmount !== '')
+        .map((d) => ({
+          percent: Number(d.percent),
+          maxAmount: Number(d.maxAmount),
+        }));
 
     const payload = {
       name: trimmedName,
@@ -275,226 +275,226 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
-      <div
-        className="modal modal-lg"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="pt-form-title"
-      >
-        <div className="modal-header">
-          <h2 id="pt-form-title">
-            <i
-              className={isEdit ? 'fas fa-pen-to-square' : 'fas fa-plus-circle'}
-              aria-hidden="true"
-            ></i>
-            {isEdit ? 'Редактирование типа оплаты' : 'Создание типа оплаты'}
-          </h2>
-        </div>
-
-        <div className="modal-body">
-          {/* Тип сделки */}
-          <div className="field">
-            <label htmlFor="pt-dealtype">
-              <i className="fas fa-exchange-alt" aria-hidden="true"></i>
-              Тип сделки
-            </label>
-            <select
-              id="pt-dealtype"
-              value={dealType}
-              onChange={(e) => setDealType(e.target.value)}
-            >
-              {DEAL_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Название */}
-          <div className="field">
-            <label htmlFor="pt-name">
-              <i className="fas fa-tag" aria-hidden="true"></i>
-              Название <span className="required">*</span>
-            </label>
-            <input
-              id="pt-name"
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (errors.name) setErrors((p) => ({ ...p, name: false }));
-              }}
-              className={errors.name ? 'invalid' : ''}
-              placeholder="Например: Карта, СБП, Опт"
-              autoFocus
-              maxLength={255}
-            />
-          </div>
-
-          {/* Фиатная валюта */}
-          <div className="field">
-            <label htmlFor="pt-currency">
-              <i className="fas fa-money-bill-wave" aria-hidden="true"></i>
-              Фиатная валюта <span className="required">*</span>
-            </label>
-            <select
-              id="pt-currency"
-              value={fiatCurrency}
-              onChange={(e) => {
-                setFiatCurrency(e.target.value);
-                if (errors.fiatCurrency)
-                  setErrors((p) => ({ ...p, fiatCurrency: false }));
-              }}
-              className={errors.fiatCurrency ? 'invalid' : ''}
-            >
-              {(fiats || []).map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.displayName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Минимальная сумма */}
-          <div className="field">
-            <label htmlFor="pt-minsum">
-              <i className="fas fa-chart-line" aria-hidden="true"></i>
-              Минимальная сумма <span className="required">*</span>
-            </label>
-            <input
-              id="pt-minsum"
-              type="number"
-              value={minSum}
-              onChange={(e) => {
-                setMinSum(e.target.value);
-                if (errors.minSum) setErrors((p) => ({ ...p, minSum: false }));
-              }}
-              className={errors.minSum ? 'invalid' : ''}
-              placeholder="Сумма"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-            />
-          </div>
-
-          {/* Скидки */}
-          <div className="field">
-            <div className="field-header">
-              <label>
-                <i className="fas fa-percent" aria-hidden="true"></i>
-                Скидки
-              </label>
-              <button
-                type="button"
-                className="btn-icon-add"
-                onClick={handleAddDiscount}
-                aria-label="Добавить скидку"
-                title="Добавить скидку"
-              >
-                <i className="fas fa-plus-circle" aria-hidden="true"></i>
-              </button>
-            </div>
-            <div className="discounts-table">
-              <div className="discounts-thead">
-                <div>Процент (%)</div>
-                <div>Макс. сумма</div>
-                <div></div>
-              </div>
-              {discounts.map((d, idx) => (
-                <div className="discounts-row" key={idx}>
-                  <input
-                    type="number"
-                    value={d.percent}
-                    onChange={(e) =>
-                      handleDiscountChange(idx, 'percent', e.target.value)
-                    }
-                    placeholder="%"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.1"
-                  />
-                  <input
-                    type="text"
-                    value={d.maxAmount}
-                    onChange={(e) => {
-                      const v = e.target.value.replace(',', '.');
-                      if (v === '' || /^\d*\.?\d*$/.test(v)) {
-                        handleDiscountChange(idx, 'maxAmount', v);
-                      }
-                    }}
-                    placeholder="Макс. сумма"
-                    inputMode="decimal"
-                  />
-                  <button
-                    type="button"
-                    className="btn-icon-delete"
-                    onClick={() => handleRemoveDiscount(idx)}
-                    aria-label="Удалить скидку"
-                    title="Удалить скидку"
-                  >
-                    <i className="fas fa-times" aria-hidden="true"></i>
-                  </button>
-                </div>
-              ))}
-              {discounts.length === 0 && (
-                <div className="discounts-empty">Нет скидок</div>
-              )}
-            </div>
-          </div>
-
-          {/* Дополнительный текст */}
-          <div className="field">
-            <label htmlFor="pt-addtext">
-              <i className="fas fa-sticky-note" aria-hidden="true"></i>
-              Дополнительный текст
-            </label>
-            <textarea
-              id="pt-addtext"
-              value={additionalText}
-              onChange={(e) => setAdditionalText(e.target.value)}
-              placeholder="Любые условия или комментарии..."
-              rows={3}
-              maxLength={2000}
-            />
-          </div>
-        </div>
-
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            Отмена
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleSave}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
-                {isEdit ? 'Сохранение...' : 'Создание...'}
-              </>
-            ) : (
-              <>
-                <i
-                  className={isEdit ? 'fas fa-check' : 'fas fa-plus-circle'}
+      <div className="modal-overlay" onClick={onClose} role="presentation">
+        <div
+            className="modal modal-lg"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pt-form-title"
+        >
+          <div className="modal-header">
+            <h2 id="pt-form-title">
+              <i
+                  className={isEdit ? 'fas fa-pen-to-square' : 'fas fa-plus-circle'}
                   aria-hidden="true"
-                ></i>
-                {isEdit ? 'Сохранить' : 'Создать'}
-              </>
-            )}
-          </button>
+              ></i>
+              {isEdit ? 'Редактирование типа оплаты' : 'Создание типа оплаты'}
+            </h2>
+          </div>
+
+          <div className="modal-body">
+            {/* Тип сделки */}
+            <div className="field">
+              <label htmlFor="pt-dealtype">
+                <i className="fas fa-exchange-alt" aria-hidden="true"></i>
+                Тип сделки
+              </label>
+              <select
+                  id="pt-dealtype"
+                  value={dealType}
+                  onChange={(e) => setDealType(e.target.value)}
+              >
+                {DEAL_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Название */}
+            <div className="field">
+              <label htmlFor="pt-name">
+                <i className="fas fa-tag" aria-hidden="true"></i>
+                Название <span className="required">*</span>
+              </label>
+              <input
+                  id="pt-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) setErrors((p) => ({ ...p, name: false }));
+                  }}
+                  className={errors.name ? 'invalid' : ''}
+                  placeholder="Например: Карта, СБП, Опт"
+                  autoFocus
+                  maxLength={255}
+              />
+            </div>
+
+            {/* Фиатная валюта */}
+            <div className="field">
+              <label htmlFor="pt-currency">
+                <i className="fas fa-money-bill-wave" aria-hidden="true"></i>
+                Фиатная валюта <span className="required">*</span>
+              </label>
+              <select
+                  id="pt-currency"
+                  value={fiatCurrency}
+                  onChange={(e) => {
+                    setFiatCurrency(e.target.value);
+                    if (errors.fiatCurrency)
+                      setErrors((p) => ({ ...p, fiatCurrency: false }));
+                  }}
+                  className={errors.fiatCurrency ? 'invalid' : ''}
+              >
+                {(fiats || []).map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.displayName}
+                    </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Минимальная сумма */}
+            <div className="field">
+              <label htmlFor="pt-minsum">
+                <i className="fas fa-chart-line" aria-hidden="true"></i>
+                Минимальная сумма <span className="required">*</span>
+              </label>
+              <input
+                  id="pt-minsum"
+                  type="number"
+                  value={minSum}
+                  onChange={(e) => {
+                    setMinSum(e.target.value);
+                    if (errors.minSum) setErrors((p) => ({ ...p, minSum: false }));
+                  }}
+                  className={errors.minSum ? 'invalid' : ''}
+                  placeholder="Сумма"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+              />
+            </div>
+
+            {/* Скидки */}
+            <div className="field">
+              <div className="field-header">
+                <label>
+                  <i className="fas fa-percent" aria-hidden="true"></i>
+                  Скидки
+                </label>
+                <button
+                    type="button"
+                    className="btn-icon-add"
+                    onClick={handleAddDiscount}
+                    aria-label="Добавить скидку"
+                    title="Добавить скидку"
+                >
+                  <i className="fas fa-plus-circle" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div className="discounts-table">
+                <div className="discounts-thead">
+                  <div>Макс. сумма</div>
+                  <div>Процент (%)</div>
+                  <div></div>
+                </div>
+                {discounts.map((d, idx) => (
+                    <div className="discounts-row" key={idx}>
+                      <input
+                          type="text"
+                          value={d.maxAmount}
+                          onChange={(e) => {
+                            const v = e.target.value.replace(',', '.');
+                            if (v === '' || /^\d*\.?\d*$/.test(v)) {
+                              handleDiscountChange(idx, 'maxAmount', v);
+                            }
+                          }}
+                          placeholder="Макс. сумма"
+                          inputMode="decimal"
+                      />
+                      <input
+                          type="number"
+                          value={d.percent}
+                          onChange={(e) =>
+                              handleDiscountChange(idx, 'percent', e.target.value)
+                          }
+                          placeholder="%"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.1"
+                      />
+                      <button
+                          type="button"
+                          className="btn-icon-delete"
+                          onClick={() => handleRemoveDiscount(idx)}
+                          aria-label="Удалить скидку"
+                          title="Удалить скидку"
+                      >
+                        <i className="fas fa-times" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                ))}
+                {discounts.length === 0 && (
+                    <div className="discounts-empty">Нет скидок</div>
+                )}
+              </div>
+            </div>
+
+            {/* Дополнительный текст */}
+            <div className="field">
+              <label htmlFor="pt-addtext">
+                <i className="fas fa-sticky-note" aria-hidden="true"></i>
+                Дополнительный текст
+              </label>
+              <textarea
+                  id="pt-addtext"
+                  value={additionalText}
+                  onChange={(e) => setAdditionalText(e.target.value)}
+                  placeholder="Любые условия или комментарии..."
+                  rows={3}
+                  maxLength={2000}
+              />
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onClose}
+                disabled={isSubmitting}
+            >
+              Отмена
+            </button>
+            <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSave}
+                disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                    {isEdit ? 'Сохранение...' : 'Создание...'}
+                  </>
+              ) : (
+                  <>
+                    <i
+                        className={isEdit ? 'fas fa-check' : 'fas fa-plus-circle'}
+                        aria-hidden="true"
+                    ></i>
+                    {isEdit ? 'Сохранить' : 'Создать'}
+                  </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -503,58 +503,58 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
 // =============================================================
 function DeleteConfirmModal({ item, onClose, onConfirm, isSubmitting }) {
   return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
-      <div
-        className="modal modal-sm"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="pt-delete-title"
-      >
-        <div className="modal-header modal-header-danger">
-          <h2 id="pt-delete-title">
-            <i className="fas fa-exclamation-triangle" aria-hidden="true"></i>
-            Подтверждение
-          </h2>
-        </div>
+      <div className="modal-overlay" onClick={onClose} role="presentation">
+        <div
+            className="modal modal-sm"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pt-delete-title"
+        >
+          <div className="modal-header modal-header-danger">
+            <h2 id="pt-delete-title">
+              <i className="fas fa-exclamation-triangle" aria-hidden="true"></i>
+              Подтверждение
+            </h2>
+          </div>
 
-        <div className="modal-body">
-          <p className="confirm-text">
-            Вы уверены, что хотите удалить тип оплаты{' '}
-            <strong>«{item.name}»</strong>?
-          </p>
-        </div>
+          <div className="modal-body">
+            <p className="confirm-text">
+              Вы уверены, что хотите удалить тип оплаты{' '}
+              <strong>«{item.name}»</strong>?
+            </p>
+          </div>
 
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            Отмена
-          </button>
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={onConfirm}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
-                Удаление...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-trash" aria-hidden="true"></i>
-                Да, удалить
-              </>
-            )}
-          </button>
+          <div className="modal-footer">
+            <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onClose}
+                disabled={isSubmitting}
+            >
+              Отмена
+            </button>
+            <button
+                type="button"
+                className="btn btn-danger"
+                onClick={onConfirm}
+                disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                    Удаление...
+                  </>
+              ) : (
+                  <>
+                    <i className="fas fa-trash" aria-hidden="true"></i>
+                    Да, удалить
+                  </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -562,15 +562,15 @@ function DeleteConfirmModal({ item, onClose, onConfirm, isSubmitting }) {
 // СВОРАЧИВАЕМЫЙ БЛОК ТАБЛИЦЫ
 // =============================================================
 function TableSection({
-  dealType,
-  items,
-  fiats,
-  open,
-  onToggleOpen,
-  onRowDoubleClick,
-  onToggleActive,
-  onRowDelete,
-}) {
+                        dealType,
+                        items,
+                        fiats,
+                        open,
+                        onToggleOpen,
+                        onRowDoubleClick,
+                        onToggleActive,
+                        onRowDelete,
+                      }) {
   const meta = DEAL_TYPES.find((t) => t.value === dealType);
   // Карта name -> displayName для показа человекопонятных названий валют
   const fiatLabel = (name) => {
@@ -579,96 +579,102 @@ function TableSection({
     return f ? f.displayName : name;
   };
   return (
-    <div className={`section ${open ? 'section-open' : ''}`}>
-      <button
-        type="button"
-        className="section-header"
-        onClick={onToggleOpen}
-        aria-expanded={open}
-      >
-        <i
-          className={`fas fa-chevron-right section-chevron ${
-            open ? 'open' : ''
-          }`}
-          aria-hidden="true"
-        ></i>
-        <span className="section-title">
+      <div className={`section ${open ? 'section-open' : ''}`}>
+        <button
+            type="button"
+            className="section-header"
+            onClick={onToggleOpen}
+            aria-expanded={open}
+        >
+          <i
+              className={`fas fa-chevron-right section-chevron ${
+                  open ? 'open' : ''
+              }`}
+              aria-hidden="true"
+          ></i>
+          <span className="section-title">
           <i className={`fas ${meta.icon}`} aria-hidden="true"></i>
-          {meta.label}
+            {meta.label}
         </span>
-        <span className="section-hint">
+          <span className="section-hint">
           Для редактирования дважды кликните по строке типа оплаты.
         </span>
-      </button>
+        </button>
 
-      {open && (
-        <div className="section-body">
-          {items.length === 0 ? (
-            <div className="section-empty">Нет записей</div>
-          ) : (
-            <div className="table-wrapper">
-              <table className="pt-table">
-                <thead>
-                  <tr>
-                    <th className="col-toggle">Включение</th>
-                    <th>Название</th>
-                    <th>Фиатная валюта</th>
-                    <th>Минимальная сумма</th>
-                    <th aria-label="Удаление" className="col-action"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((it) => (
-                    <tr
-                      key={it.pid}
-                      className="row-editable"
-                      onDoubleClick={() => onRowDoubleClick(it)}
-                    >
-                      <td
-                        className="cell-toggle"
-                        onDoubleClick={(e) => e.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={!!it.isOn}
-                          onChange={(e) =>
-                            onToggleActive(it, e.target.checked)
-                          }
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label={`Включение ${it.name}`}
-                        />
-                      </td>
-                      <td className="cell-name" title={it.name}>
-                        {it.name}
-                      </td>
-                      <td>{fiatLabel(it.fiatCurrency)}</td>
-                      <td>{formatNumber(it.minSum)}</td>
-                      <td className="cell-action">
-                        <button
-                          type="button"
-                          className="btn-delete"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRowDelete(it);
-                          }}
-                          aria-label={`Удалить ${it.name}`}
-                          title="Удалить"
-                        >
+        {open && (
+            <div className="section-body">
+              {items.length === 0 ? (
+                  <div className="section-empty">Нет записей</div>
+              ) : (
+                  <div className="table-wrapper">
+                    <table className="pt-table">
+                      <thead>
+                      <tr>
+                        <th className="col-toggle">
                           <i
-                            className="fas fa-times-circle"
-                            aria-hidden="true"
+                              className="fas fa-power-off"
+                              aria-label="Включение"
+                              title="Включение"
                           ></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </th>
+                        <th>Название</th>
+                        <th>Фиатная валюта</th>
+                        <th>Минимальная сумма</th>
+                        <th aria-label="Удаление" className="col-action"></th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      {items.map((it) => (
+                          <tr
+                              key={it.pid}
+                              className="row-editable"
+                              onDoubleClick={() => onRowDoubleClick(it)}
+                          >
+                            <td
+                                className="cell-toggle"
+                                onDoubleClick={(e) => e.stopPropagation()}
+                            >
+                              <input
+                                  type="checkbox"
+                                  checked={!!it.isOn}
+                                  onChange={(e) =>
+                                      onToggleActive(it, e.target.checked)
+                                  }
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label={`Включение ${it.name}`}
+                              />
+                            </td>
+                            <td className="cell-name" title={it.name}>
+                              {it.name}
+                            </td>
+                            <td>{fiatLabel(it.fiatCurrency)}</td>
+                            <td>{formatNumber(it.minSum)}</td>
+                            <td className="cell-action">
+                              <button
+                                  type="button"
+                                  className="btn-delete"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRowDelete(it);
+                                  }}
+                                  aria-label={`Удалить ${it.name}`}
+                                  title="Удалить"
+                              >
+                                <i
+                                    className="fas fa-times-circle"
+                                    aria-hidden="true"
+                                ></i>
+                              </button>
+                            </td>
+                          </tr>
+                      ))}
+                      </tbody>
+                    </table>
+                  </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
-    </div>
+        )}
+      </div>
   );
 }
 
@@ -717,13 +723,13 @@ export default function App() {
   // Загружаем справочник валют один раз при mount
   useEffect(() => {
     paymentTypesApi
-      .listFiats()
-      .then((data) => setFiats(Array.isArray(data) ? data : []))
-      .catch(() => {
-        // Если справочник не загрузился — не показываем ошибку, просто
-        // dropdown будет пустой. Юзер увидит проблему при попытке создать.
-        setFiats([]);
-      });
+        .listFiats()
+        .then((data) => setFiats(Array.isArray(data) ? data : []))
+        .catch(() => {
+          // Если справочник не загрузился — не показываем ошибку, просто
+          // dropdown будет пустой. Юзер увидит проблему при попытке создать.
+          setFiats([]);
+        });
   }, []);
 
   const loadItems = useCallback(async () => {
@@ -751,12 +757,12 @@ export default function App() {
         const updated = await paymentTypesApi.update(payload);
         if (updated && updated.pid != null) {
           setItems((prev) =>
-            prev.map((it) => (it.pid === updated.pid ? updated : it))
+              prev.map((it) => (it.pid === updated.pid ? updated : it))
           );
         } else {
           // Фоллбэк: применяем то что отправили локально
           setItems((prev) =>
-            prev.map((it) => (it.pid === payload.pid ? { ...it, ...payload } : it))
+              prev.map((it) => (it.pid === payload.pid ? { ...it, ...payload } : it))
           );
         }
       } else {
@@ -798,7 +804,7 @@ export default function App() {
   const handleToggleActive = async (item, isOn) => {
     // Оптимистичное обновление UI
     setItems((prev) =>
-      prev.map((it) => (it.pid === item.pid ? { ...it, isOn } : it))
+        prev.map((it) => (it.pid === item.pid ? { ...it, isOn } : it))
     );
     try {
       await paymentTypesApi.toggleActive(item.pid, isOn);
@@ -806,7 +812,7 @@ export default function App() {
     } catch (e) {
       // Откат если не получилось
       setItems((prev) =>
-        prev.map((it) => (it.pid === item.pid ? { ...it, isOn: !isOn } : it))
+          prev.map((it) => (it.pid === item.pid ? { ...it, isOn: !isOn } : it))
       );
       haptic('error');
       alert('Не удалось изменить статус: ' + (e.message || ''));
@@ -820,92 +826,92 @@ export default function App() {
   const sellItems = items.filter((it) => it.dealType === 'SELL');
 
   return (
-    <div className="app">
-      <div className="container">
-        <header className="page-header">
-          <h1>
-            <i className="fas fa-credit-card" aria-hidden="true"></i>
-            Управление типами оплат
-          </h1>
-          <button
-            type="button"
-            className="btn btn-primary btn-create"
-            onClick={() => setEditing('new')}
-          >
-            <i className="fas fa-plus-circle" aria-hidden="true"></i>
-            Создать
-          </button>
-        </header>
+      <div className="app">
+        <div className="container">
+          <header className="page-header">
+            <h1>
+              <i className="fas fa-credit-card" aria-hidden="true"></i>
+              Управление типами оплат
+            </h1>
+            <button
+                type="button"
+                className="btn btn-primary btn-create"
+                onClick={() => setEditing('new')}
+            >
+              <i className="fas fa-plus-circle" aria-hidden="true"></i>
+              Создать
+            </button>
+          </header>
 
-        <main className="content">
-          {loading && (
-            <div className="state state-loading">
-              <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
-              <span>Загрузка...</span>
-            </div>
-          )}
+          <main className="content">
+            {loading && (
+                <div className="state state-loading">
+                  <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <span>Загрузка...</span>
+                </div>
+            )}
 
-          {!loading && error && (
-            <div className="state state-error">
-              <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>
-              <span>{error}</span>
-              <button className="btn btn-secondary" onClick={loadItems}>
-                <i className="fas fa-rotate" aria-hidden="true"></i>
-                Повторить
-              </button>
-            </div>
-          )}
+            {!loading && error && (
+                <div className="state state-error">
+                  <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                  <span>{error}</span>
+                  <button className="btn btn-secondary" onClick={loadItems}>
+                    <i className="fas fa-rotate" aria-hidden="true"></i>
+                    Повторить
+                  </button>
+                </div>
+            )}
 
-          {!loading && !error && (
-            <>
-              {/* Сначала "Покупка", затем "Продажа" — как требует ТЗ */}
-              <TableSection
-                dealType="BUY"
-                items={buyItems}
+            {!loading && !error && (
+                <>
+                  {/* Сначала "Покупка", затем "Продажа" — как требует ТЗ */}
+                  <TableSection
+                      dealType="BUY"
+                      items={buyItems}
+                      fiats={fiats}
+                      open={openSections.BUY}
+                      onToggleOpen={() =>
+                          setOpenSections((s) => ({ ...s, BUY: !s.BUY }))
+                      }
+                      onRowDoubleClick={(it) => setEditing(it)}
+                      onToggleActive={handleToggleActive}
+                      onRowDelete={(it) => setToDelete(it)}
+                  />
+                  <TableSection
+                      dealType="SELL"
+                      items={sellItems}
+                      fiats={fiats}
+                      open={openSections.SELL}
+                      onToggleOpen={() =>
+                          setOpenSections((s) => ({ ...s, SELL: !s.SELL }))
+                      }
+                      onRowDoubleClick={(it) => setEditing(it)}
+                      onToggleActive={handleToggleActive}
+                      onRowDelete={(it) => setToDelete(it)}
+                  />
+                </>
+            )}
+          </main>
+        </div>
+
+        {editing && (
+            <PaymentTypeFormModal
+                initial={editing === 'new' ? null : editing}
                 fiats={fiats}
-                open={openSections.BUY}
-                onToggleOpen={() =>
-                  setOpenSections((s) => ({ ...s, BUY: !s.BUY }))
-                }
-                onRowDoubleClick={(it) => setEditing(it)}
-                onToggleActive={handleToggleActive}
-                onRowDelete={(it) => setToDelete(it)}
-              />
-              <TableSection
-                dealType="SELL"
-                items={sellItems}
-                fiats={fiats}
-                open={openSections.SELL}
-                onToggleOpen={() =>
-                  setOpenSections((s) => ({ ...s, SELL: !s.SELL }))
-                }
-                onRowDoubleClick={(it) => setEditing(it)}
-                onToggleActive={handleToggleActive}
-                onRowDelete={(it) => setToDelete(it)}
-              />
-            </>
-          )}
-        </main>
+                onClose={() => !isSubmitting && setEditing(null)}
+                onSubmit={handleSubmit}
+                isSubmitting={isSubmitting}
+            />
+        )}
+
+        {toDelete && (
+            <DeleteConfirmModal
+                item={toDelete}
+                onClose={() => !isSubmitting && setToDelete(null)}
+                onConfirm={handleDelete}
+                isSubmitting={isSubmitting}
+            />
+        )}
       </div>
-
-      {editing && (
-        <PaymentTypeFormModal
-          initial={editing === 'new' ? null : editing}
-          fiats={fiats}
-          onClose={() => !isSubmitting && setEditing(null)}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-        />
-      )}
-
-      {toDelete && (
-        <DeleteConfirmModal
-          item={toDelete}
-          onClose={() => !isSubmitting && setToDelete(null)}
-          onConfirm={handleDelete}
-          isSubmitting={isSubmitting}
-        />
-      )}
-    </div>
   );
 }

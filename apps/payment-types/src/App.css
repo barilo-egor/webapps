@@ -584,8 +584,16 @@ body {
 
 .pt-table .col-toggle,
 .pt-table .cell-toggle {
-  width: 90px;
+  width: 56px;
   text-align: center;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* Иконка power-off в заголовке колонки "Включение" */
+.pt-table .col-toggle i {
+  font-size: 14px;
+  color: var(--tg-hint);
 }
 
 .pt-table .cell-toggle input[type="checkbox"] {
@@ -759,7 +767,7 @@ body {
   }
   .pt-table .col-toggle,
   .pt-table .cell-toggle {
-    width: 60px;
+    width: 50px;
   }
   .pt-table .cell-name {
     max-width: 100px;
