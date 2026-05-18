@@ -3,8 +3,8 @@
 // - SSH_CRED_ID - идентификатор SSH ключа
 // - WEBAPPS_DEPLOY_PATH - путь на сервере, куда необходимо расположить собранные проекты
 // - WEBAPPS_DEPLOY_HOST - IP адрес сервера, на который будут отправлены проекты
-// - WEBAPPS_DEPLOY_USER - имя пользователя на сервере
-// - WEBAPPS_DEPLOY_PORT - порт SSH
+// - SSH_USER - имя пользователя на сервере
+// - SSH_PORT - порт SSH
 pipeline {
     agent any
 
@@ -48,11 +48,11 @@ pipeline {
                                 if (fileExists('dist')) {
                                     sshagent([env.SSH_CRED_ID]) {
                                         def remotePath = "${env.WEBAPPS_DEPLOY_PATH}/${appName}"
-                                        def sshCmd = "ssh -p ${env.WEBAPPS_DEPLOY_PORT} -o StrictHostKeyChecking=no ${env.WEBAPPS_DEPLOY_USER}@${env.WEBAPPS_DEPLOY_HOST}"
-                                        def scpCmd = "scp -P ${env.WEBAPPS_DEPLOY_PORT} -o StrictHostKeyChecking=no"
+                                        def sshCmd = "ssh -p ${env.SSH_PORT} -o StrictHostKeyChecking=no ${env.SSH_USER}@${env.WEBAPPS_DEPLOY_HOST}"
+                                        def scpCmd = "scp -P ${env.SSH_PORT} -o StrictHostKeyChecking=no"
 
                                         sh "${sshCmd} 'mkdir -p ${remotePath}'"
-                                        sh "${scpCmd} -r dist/* ${env.WEBAPPS_DEPLOY_USER}@${env.WEBAPPS_DEPLOY_HOST}:${remotePath}/"
+                                        sh "${scpCmd} -r dist/* ${env.SSH_USER}@${env.WEBAPPS_DEPLOY_HOST}:${remotePath}/"
                                     }
                                     echo "✅ ${appName} deployed successfully!"
                                 } else {
