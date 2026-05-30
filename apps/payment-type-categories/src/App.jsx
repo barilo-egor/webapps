@@ -33,19 +33,19 @@ const apiFetch = async (url, options = {}) => {
 const realCategoriesApi = {
   list: () => apiFetch('/api/payment-type-category'),
   create: (name) =>
-    apiFetch(
-      `/api/payment-type-category?name=${encodeURIComponent(name)}`,
-      { method: 'POST' }
-    ),
+      apiFetch(
+          `/api/payment-type-category?name=${encodeURIComponent(name)}`,
+          { method: 'POST' }
+      ),
   remove: (pid) =>
-    apiFetch(`/api/payment-type-category/${pid}`, { method: 'DELETE' }),
+      apiFetch(`/api/payment-type-category/${pid}`, { method: 'DELETE' }),
   // Toggle: один и тот же endpoint и для привязки, и для отвязки.
   // Бэк сам определяет: если связь есть — удалить, нет — создать.
   toggleBinding: (catPid, typePid) =>
-    apiFetch(
-      `/api/payment-type-category/${catPid}?paymentTypePid=${typePid}`,
-      { method: 'PATCH' }
-    ),
+      apiFetch(
+          `/api/payment-type-category/${catPid}?paymentTypePid=${typePid}`,
+          { method: 'PATCH' }
+      ),
 };
 
 // API для типов оплат (нам нужен только GET для списка колонок)
@@ -123,38 +123,45 @@ if (USE_MOCK) {
 // УТИЛИТЫ
 // =============================================================
 
-/** Проверяем что категория привязана к типу. Поддерживаем два варианта
- *  ответа бэка: либо у категории есть массив paymentTypePids (числа),
- *  либо paymentTypes (массив объектов с pid). */
+
 function isBound(category, typePid) {
   if (!category) return false;
-  if (Array.isArray(category.paymentTypePids)) {
-    return category.paymentTypePids.includes(typePid);
-  }
-  if (Array.isArray(category.paymentTypes)) {
-    return category.paymentTypes.some((t) => t.pid === typePid);
-  }
-  return false;
+  const arr = category.paymentTypes || category.paymentTypePids;
+  if (!Array.isArray(arr)) return false;
+  return arr.some((item) =>
+      typeof item === 'object' && item !== null ? item.pid === typePid : item === typePid
+  );
 }
 
-/** Локальное переключение связи в объекте категории (для оптимистичного UI). */
+
 function toggleBound(category, typePid) {
-  if (Array.isArray(category.paymentTypePids)) {
-    const idx = category.paymentTypePids.indexOf(typePid);
-    const next = [...category.paymentTypePids];
-    if (idx === -1) next.push(typePid);
-    else next.splice(idx, 1);
-    return { ...category, paymentTypePids: next };
+  // Определяем какое поле и формат используется
+  const fieldName = Array.isArray(category.paymentTypes)
+      ? 'paymentTypes'
+      : 'paymentTypePids';
+  const arr = category[fieldName] || [];
+
+  // Определяем — массив чисел или объектов
+  const isObjectArray =
+      arr.length > 0 && typeof arr[0] === 'object' && arr[0] !== null;
+
+  // Найти есть ли уже эта привязка
+  const hasIt = arr.some((item) =>
+      isObjectArray ? item.pid === typePid : item === typePid
+  );
+
+  let next;
+  if (hasIt) {
+    // Удаляем
+    next = arr.filter((item) =>
+        isObjectArray ? item.pid !== typePid : item !== typePid
+    );
+  } else {
+    // Добавляем (в том же формате что был)
+    next = isObjectArray ? [...arr, { pid: typePid }] : [...arr, typePid];
   }
-  if (Array.isArray(category.paymentTypes)) {
-    const has = category.paymentTypes.some((t) => t.pid === typePid);
-    const next = has
-      ? category.paymentTypes.filter((t) => t.pid !== typePid)
-      : [...category.paymentTypes, { pid: typePid }];
-    return { ...category, paymentTypes: next };
-  }
-  // Если бэк прислал ничего из этого — создаём поле paymentTypePids
-  return { ...category, paymentTypePids: [typePid] };
+
+  return { ...category, [fieldName]: next };
 }
 
 // =============================================================
@@ -176,58 +183,58 @@ function CategoryCreateModal({ onClose, onSubmit, isSubmitting }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal modal-sm"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="modal-header">
-          <h2>
-            <i className="fas fa-layer-group" aria-hidden="true"></i>
-            Новая категория
-          </h2>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            <div className="field">
-              <label>
-                Название категории <span className="required">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (error) setError(false);
-                }}
-                placeholder="Введите название категории"
-                autoFocus
-                disabled={isSubmitting}
-                className={error ? 'invalid' : ''}
-              />
-              {error && (
-                <div className="hint hint-error">Название обязательно</div>
-              )}
+      <div className="modal-overlay" onClick={onClose}>
+        <div
+            className="modal modal-sm"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+        >
+          <div className="modal-header">
+            <h2>
+              <i className="fas fa-layer-group" aria-hidden="true"></i>
+              Новая категория
+            </h2>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body">
+              <div className="field">
+                <label>
+                  Название категории <span className="required">*</span>
+                </label>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (error) setError(false);
+                    }}
+                    placeholder="Введите название категории"
+                    autoFocus
+                    disabled={isSubmitting}
+                    className={error ? 'invalid' : ''}
+                />
+                {error && (
+                    <div className="hint hint-error">Название обязательно</div>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              Отмена
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Сохранение…' : 'Создать'}
-            </button>
-          </div>
-        </form>
+            <div className="modal-footer">
+              <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+              >
+                Отмена
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                {isSubmitting ? 'Сохранение…' : 'Создать'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -237,44 +244,44 @@ function CategoryCreateModal({ onClose, onSubmit, isSubmitting }) {
 
 function CategoryDeleteModal({ category, onClose, onConfirm, isSubmitting }) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal modal-sm"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="modal-header modal-header-danger">
-          <h2>
-            <i className="fas fa-exclamation-triangle" aria-hidden="true"></i>
-            Подтверждение удаления
-          </h2>
-        </div>
-        <div className="modal-body">
-          <p className="confirm-text">
-            Вы действительно хотите удалить категорию «{category.name}»?
-          </p>
-        </div>
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            Отмена
-          </button>
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={onConfirm}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Удаление…' : 'Да, удалить'}
-          </button>
+      <div className="modal-overlay" onClick={onClose}>
+        <div
+            className="modal modal-sm"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+        >
+          <div className="modal-header modal-header-danger">
+            <h2>
+              <i className="fas fa-exclamation-triangle" aria-hidden="true"></i>
+              Подтверждение удаления
+            </h2>
+          </div>
+          <div className="modal-body">
+            <p className="confirm-text">
+              Вы действительно хотите удалить категорию «{category.name}»?
+            </p>
+          </div>
+          <div className="modal-footer">
+            <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onClose}
+                disabled={isSubmitting}
+            >
+              Отмена
+            </button>
+            <button
+                type="button"
+                className="btn btn-danger"
+                onClick={onConfirm}
+                disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Удаление…' : 'Да, удалить'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -327,7 +334,7 @@ export default function App() {
   const handleToggleBinding = async (catPid, typePid) => {
     const prev = categories;
     setCategories((cats) =>
-      cats.map((c) => (c.pid === catPid ? toggleBound(c, typePid) : c))
+        cats.map((c) => (c.pid === catPid ? toggleBound(c, typePid) : c))
     );
     try {
       await categoriesApi.toggleBinding(catPid, typePid);
@@ -370,115 +377,115 @@ export default function App() {
   };
 
   return (
-    <div className="app">
-      <div className="container">
-        <header className="page-header">
-          <h1>
-            <i className="fas fa-layer-group" aria-hidden="true"></i>
-            Категории типов оплаты
-          </h1>
-          <button
-            type="button"
-            className="btn-add"
-            onClick={() => setShowCreate(true)}
-            aria-label="Добавить категорию"
-            title="Добавить категорию"
-          >
-            <i className="fas fa-plus" aria-hidden="true"></i>
-          </button>
-        </header>
+      <div className="app">
+        <div className="container">
+          <header className="page-header">
+            <h1>
+              <i className="fas fa-layer-group" aria-hidden="true"></i>
+              Категории типов оплаты
+            </h1>
+            <button
+                type="button"
+                className="btn-add"
+                onClick={() => setShowCreate(true)}
+                aria-label="Добавить категорию"
+                title="Добавить категорию"
+            >
+              <i className="fas fa-plus" aria-hidden="true"></i>
+            </button>
+          </header>
 
-        <main>
-          {loading && (
-            <div className="state">
-              <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
-              <span>Загрузка…</span>
-            </div>
-          )}
+          <main>
+            {loading && (
+                <div className="state">
+                  <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <span>Загрузка…</span>
+                </div>
+            )}
 
-          {!loading && error && (
-            <div className="state state-error">
-              <i className="fas fa-exclamation-circle" aria-hidden="true"></i>
-              <span>{error}</span>
-              <button type="button" className="btn btn-secondary" onClick={loadAll}>
-                Повторить
-              </button>
-            </div>
-          )}
+            {!loading && error && (
+                <div className="state state-error">
+                  <i className="fas fa-exclamation-circle" aria-hidden="true"></i>
+                  <span>{error}</span>
+                  <button type="button" className="btn btn-secondary" onClick={loadAll}>
+                    Повторить
+                  </button>
+                </div>
+            )}
 
-          {!loading && !error && categories.length === 0 && (
-            <div className="state state-empty">
-              <i className="fas fa-inbox" aria-hidden="true"></i>
-              <span>Категорий нет. Нажмите «+» чтобы создать первую.</span>
-            </div>
-          )}
+            {!loading && !error && categories.length === 0 && (
+                <div className="state state-empty">
+                  <i className="fas fa-inbox" aria-hidden="true"></i>
+                  <span>Категорий нет. Нажмите «+» чтобы создать первую.</span>
+                </div>
+            )}
 
-          {!loading && !error && categories.length > 0 && (
-            <div className="table-wrapper">
-              <table className="cat-table">
-                <thead>
-                  <tr>
-                    <th className="col-cat-name">Категория / Тип оплаты</th>
-                    {types.map((t) => (
-                      <th key={t.pid} className="col-type">
-                        {t.name}
-                      </th>
-                    ))}
-                    <th aria-label="Удаление" className="col-action"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categories.map((cat) => (
-                    <tr key={cat.pid}>
-                      <td className="cell-cat-name" title={cat.name}>
-                        {cat.name}
-                      </td>
+            {!loading && !error && categories.length > 0 && (
+                <div className="table-wrapper">
+                  <table className="cat-table">
+                    <thead>
+                    <tr>
+                      <th className="col-cat-name">Категория / Тип оплаты</th>
                       {types.map((t) => (
-                        <td key={t.pid} className="cell-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={isBound(cat, t.pid)}
-                            onChange={() => handleToggleBinding(cat.pid, t.pid)}
-                            aria-label={`Привязать ${cat.name} к ${t.name}`}
-                          />
-                        </td>
+                          <th key={t.pid} className="col-type">
+                            {t.name}
+                          </th>
                       ))}
-                      <td className="cell-action">
-                        <button
-                          type="button"
-                          className="btn-delete"
-                          onClick={() => setToDelete(cat)}
-                          aria-label={`Удалить категорию ${cat.name}`}
-                          title="Удалить"
-                        >
-                          <i className="fas fa-times-circle" aria-hidden="true"></i>
-                        </button>
-                      </td>
+                      <th aria-label="Удаление" className="col-action"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </main>
+                    </thead>
+                    <tbody>
+                    {categories.map((cat) => (
+                        <tr key={cat.pid}>
+                          <td className="cell-cat-name" title={cat.name}>
+                            {cat.name}
+                          </td>
+                          {types.map((t) => (
+                              <td key={t.pid} className="cell-checkbox">
+                                <input
+                                    type="checkbox"
+                                    checked={isBound(cat, t.pid)}
+                                    onChange={() => handleToggleBinding(cat.pid, t.pid)}
+                                    aria-label={`Привязать ${cat.name} к ${t.name}`}
+                                />
+                              </td>
+                          ))}
+                          <td className="cell-action">
+                            <button
+                                type="button"
+                                className="btn-delete"
+                                onClick={() => setToDelete(cat)}
+                                aria-label={`Удалить категорию ${cat.name}`}
+                                title="Удалить"
+                            >
+                              <i className="fas fa-times-circle" aria-hidden="true"></i>
+                            </button>
+                          </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                  </table>
+                </div>
+            )}
+          </main>
+        </div>
+
+        {showCreate && (
+            <CategoryCreateModal
+                onClose={() => !isSubmitting && setShowCreate(false)}
+                onSubmit={handleCreate}
+                isSubmitting={isSubmitting}
+            />
+        )}
+
+        {toDelete && (
+            <CategoryDeleteModal
+                category={toDelete}
+                onClose={() => !isSubmitting && setToDelete(null)}
+                onConfirm={handleDelete}
+                isSubmitting={isSubmitting}
+            />
+        )}
       </div>
-
-      {showCreate && (
-        <CategoryCreateModal
-          onClose={() => !isSubmitting && setShowCreate(false)}
-          onSubmit={handleCreate}
-          isSubmitting={isSubmitting}
-        />
-      )}
-
-      {toDelete && (
-        <CategoryDeleteModal
-          category={toDelete}
-          onClose={() => !isSubmitting && setToDelete(null)}
-          onConfirm={handleDelete}
-          isSubmitting={isSubmitting}
-        />
-      )}
-    </div>
   );
 }
