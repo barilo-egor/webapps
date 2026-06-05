@@ -54,7 +54,7 @@ body {
 }
 
 .container {
-  max-width: 1000px;
+  max-width: 1800px;
   margin: 0 auto;
 }
 
@@ -228,7 +228,18 @@ body {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  max-width: 60%;
+  /* Контрол прижат к правому краю строки. Внутри — инпут с динамической
+     шириной (style={width: NNch}) подстраивается под содержимое.
+     На узких экранах не сжимается ниже 240px. */
+  justify-content: flex-end;
+  min-width: 240px;
+  max-width: 100%;
+}
+
+/* Инпут с динамической шириной — не должен растягиваться на всю ширину
+   родителя, его width задаётся через inline-style (style="width: NNch") */
+.input-auto-width {
+  width: auto;
 }
 
 /* Блок (таблица или матрица) с заголовком */
@@ -254,7 +265,7 @@ body {
    ========================================================= */
 .input {
   width: 100%;
-  min-width: 100px;
+  min-width: 0;            /* min-width: 100px мешал ячейкам сжиматься; теперь тянется как контейнер */
   padding: 8px 12px;
   font-size: 14px;
   font-family: inherit;
@@ -278,7 +289,8 @@ body {
 
 .cell-input {
   text-align: center;
-  min-width: 80px;
+  min-width: 0;            /* раньше 80px — мешало уменьшаться в матрице */
+  width: 100%;
 }
 
 .select {
@@ -368,9 +380,24 @@ body {
 
 .row-table-cell {
   flex: 1;
-  min-width: 130px;
+  min-width: 0;          /* раньше было 130px — мешало растягиваться на всю ширину */
   padding: 10px 8px;
   text-align: center;
+}
+
+/* Модификатор для row-table со строковыми значениями (адреса кошельков).
+   Адреса длинные (до 95 символов у Monero), нужна большая мин. ширина каждой
+   ячейки. Если экран узкий — родительский overflow-x:auto даст скролл.
+   flex-shrink:0 нужен чтобы flex-ячейки не сжимались под min-width,
+   а flex-basis:320px задаёт фиксированную базовую ширину. */
+.row-table-strings .row-table-header,
+.row-table-strings .row-table-body {
+  width: max-content;
+  min-width: 100%;
+}
+.row-table-strings .row-table-cell {
+  flex: 0 0 320px;
+  min-width: 320px;
 }
 
 .row-table-th {
@@ -439,7 +466,7 @@ body {
 .matrix-cell {
   border-left: 1px solid var(--border);
   vertical-align: middle;
-  min-width: 110px;
+  min-width: 0;            /* ячейки делят пространство равномерно */
 }
 
 .matrix-table tbody tr:last-child td,

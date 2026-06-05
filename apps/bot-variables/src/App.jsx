@@ -32,10 +32,10 @@ const realApi = {
   listValues: () => apiFetch('/api/variables'),
   // POST /api/variables — сохранить значение (для текущего бота)
   save: (payload) =>
-    apiFetch('/api/variables', { method: 'POST', body: JSON.stringify(payload) }),
+      apiFetch('/api/variables', { method: 'POST', body: JSON.stringify(payload) }),
   // POST /api/variables?isGlobalSave=true — сохранить глобально на всех ботах
   saveGlobal: (payload) =>
-    apiFetch('/api/variables?isGlobalSave=true', { method: 'POST', body: JSON.stringify(payload) }),
+      apiFetch('/api/variables?isGlobalSave=true', { method: 'POST', body: JSON.stringify(payload) }),
 };
 
 // =============================================================
@@ -107,13 +107,13 @@ let mockValues = [
 ];
 
 const findValueIdx = (payload) =>
-  mockValues.findIndex(
-    (v) =>
-      v.variableType === payload.variableType &&
-      (v.fiatCurrency ?? null) === (payload.fiatCurrency ?? null) &&
-      (v.dealType ?? null) === (payload.dealType ?? null) &&
-      (v.cryptoCurrency ?? null) === (payload.cryptoCurrency ?? null)
-  );
+    mockValues.findIndex(
+        (v) =>
+            v.variableType === payload.variableType &&
+            (v.fiatCurrency ?? null) === (payload.fiatCurrency ?? null) &&
+            (v.dealType ?? null) === (payload.dealType ?? null) &&
+            (v.cryptoCurrency ?? null) === (payload.cryptoCurrency ?? null)
+    );
 
 const mockApi = {
   listTypes: async () => {
@@ -316,9 +316,9 @@ function Toast({ message, onDone }) {
     return () => clearTimeout(t);
   }, [onDone]);
   return (
-    <div className="toast">
-      {message}
-    </div>
+      <div className="toast">
+        {message}
+      </div>
   );
 }
 
@@ -329,38 +329,38 @@ function Toast({ message, onDone }) {
 function FieldActions({ visible, onLocal, onGlobal, onCancel, disabled }) {
   if (!visible) return null;
   return (
-    <div className="field-actions">
-      <button
-        type="button"
-        className="action-btn action-local"
-        onClick={onLocal}
-        disabled={disabled}
-        title="Сохранить (только для этого бота)"
-        aria-label="Сохранить для этого бота"
-      >
-        <i className="fas fa-check" aria-hidden="true"></i>
-      </button>
-      <button
-        type="button"
-        className="action-btn action-global"
-        onClick={onGlobal}
-        disabled={disabled}
-        title="Сохранить на всех ботах"
-        aria-label="Сохранить на всех ботах"
-      >
-        <i className="fas fa-check-double" aria-hidden="true"></i>
-      </button>
-      <button
-        type="button"
-        className="action-btn action-cancel"
-        onClick={onCancel}
-        disabled={disabled}
-        title="Отменить изменения"
-        aria-label="Отменить изменения"
-      >
-        <i className="fas fa-times" aria-hidden="true"></i>
-      </button>
-    </div>
+      <div className="field-actions">
+        <button
+            type="button"
+            className="action-btn action-local"
+            onClick={onLocal}
+            disabled={disabled}
+            title="Сохранить (только для этого бота)"
+            aria-label="Сохранить для этого бота"
+        >
+          <i className="fas fa-check" aria-hidden="true"></i>
+        </button>
+        <button
+            type="button"
+            className="action-btn action-global"
+            onClick={onGlobal}
+            disabled={disabled}
+            title="Сохранить на всех ботах"
+            aria-label="Сохранить на всех ботах"
+        >
+          <i className="fas fa-check-double" aria-hidden="true"></i>
+        </button>
+        <button
+            type="button"
+            className="action-btn action-cancel"
+            onClick={onCancel}
+            disabled={disabled}
+            title="Отменить изменения"
+            aria-label="Отменить изменения"
+        >
+          <i className="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
   );
 }
 
@@ -382,7 +382,7 @@ function useFieldState(initialValue) {
   }, [initialValue]);
 
   const isModified =
-    String(currentValue ?? '') !== String(savedValue ?? '');
+      String(currentValue ?? '') !== String(savedValue ?? '');
 
   return {
     currentValue,
@@ -407,9 +407,9 @@ function ScalarField({ type, savedValue, onSave }) {
   const isBool = javaType === 'java.lang.Boolean';
   const allowDecimal = javaType === 'java.math.BigDecimal';
   const isNumeric =
-    javaType === 'java.math.BigDecimal' ||
-    javaType === 'java.lang.Integer' ||
-    javaType === 'java.lang.Long';
+      javaType === 'java.math.BigDecimal' ||
+      javaType === 'java.lang.Integer' ||
+      javaType === 'java.lang.Long';
 
   const fs = useFieldState(savedValue);
   const [busy, setBusy] = useState(false);
@@ -439,39 +439,46 @@ function ScalarField({ type, savedValue, onSave }) {
     }
   };
 
+  // Динамическая ширина инпута — подстраивается под длину содержимого.
+  // Минимум 8ch (чтобы пустой инпут было видно), максимум 60ch (длинные URL).
+  // Юнит "ch" = ширина символа "0" текущего шрифта.
+  const valueLength = String(fs.currentValue ?? '').length;
+  const dynamicWidth = `${Math.max(8, Math.min(60, valueLength + 4))}ch`;
+
   return (
-    <div className="variable-row">
-      <div className="variable-label">{type.displayName}</div>
-      <div className="variable-control">
-        {isBool ? (
-          <select
-            value={fs.currentValue}
-            onChange={(e) => fs.setCurrentValue(e.target.value)}
-            disabled={busy}
-            className="select"
-          >
-            <option value="true">Да</option>
-            <option value="false">Нет</option>
-          </select>
-        ) : (
-          <input
-            type="text"
-            value={fs.currentValue}
-            onChange={handleInputChange}
-            inputMode={inputModeForJavaType(javaType)}
-            disabled={busy}
-            className="input"
+      <div className="variable-row">
+        <div className="variable-label">{type.displayName}</div>
+        <div className="variable-control">
+          {isBool ? (
+              <select
+                  value={fs.currentValue}
+                  onChange={(e) => fs.setCurrentValue(e.target.value)}
+                  disabled={busy}
+                  className="select"
+              >
+                <option value="true">Да</option>
+                <option value="false">Нет</option>
+              </select>
+          ) : (
+              <input
+                  type="text"
+                  value={fs.currentValue}
+                  onChange={handleInputChange}
+                  inputMode={inputModeForJavaType(javaType)}
+                  disabled={busy}
+                  className="input input-auto-width"
+                  style={{ width: dynamicWidth }}
+              />
+          )}
+          <FieldActions
+              visible={fs.isModified}
+              disabled={busy}
+              onLocal={() => submit(false)}
+              onGlobal={() => submit(true)}
+              onCancel={fs.revert}
           />
-        )}
-        <FieldActions
-          visible={fs.isModified}
-          disabled={busy}
-          onLocal={() => submit(false)}
-          onGlobal={() => submit(true)}
-          onCancel={fs.revert}
-        />
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -483,9 +490,9 @@ function RowCell({ type, savedValue, coords, onSave }) {
   const javaType = type.config.type;
   const allowDecimal = javaType === 'java.math.BigDecimal';
   const isNumeric =
-    javaType === 'java.math.BigDecimal' ||
-    javaType === 'java.lang.Integer' ||
-    javaType === 'java.lang.Long';
+      javaType === 'java.math.BigDecimal' ||
+      javaType === 'java.lang.Integer' ||
+      javaType === 'java.lang.Long';
   const isString = javaType === 'java.lang.String';
 
   const fs = useFieldState(savedValue);
@@ -516,23 +523,23 @@ function RowCell({ type, savedValue, coords, onSave }) {
   };
 
   return (
-    <div className="cell-with-actions">
-      <input
-        type="text"
-        value={fs.currentValue}
-        onChange={handleInputChange}
-        inputMode={isString ? 'text' : inputModeForJavaType(javaType)}
-        disabled={busy}
-        className="input cell-input"
-      />
-      <FieldActions
-        visible={fs.isModified}
-        disabled={busy}
-        onLocal={() => submit(false)}
-        onGlobal={() => submit(true)}
-        onCancel={fs.revert}
-      />
-    </div>
+      <div className="cell-with-actions">
+        <input
+            type="text"
+            value={fs.currentValue}
+            onChange={handleInputChange}
+            inputMode={isString ? 'text' : inputModeForJavaType(javaType)}
+            disabled={busy}
+            className="input cell-input"
+        />
+        <FieldActions
+            visible={fs.isModified}
+            disabled={busy}
+            onLocal={() => submit(false)}
+            onGlobal={() => submit(true)}
+            onCancel={fs.revert}
+        />
+      </div>
   );
 }
 
@@ -547,41 +554,46 @@ function RowField({ type, valuesMap, axes, onSaveCell }) {
   const isByFiat = config.hasFiatCurrency;
   const items = isByCrypto ? axes.cryptos : isByFiat ? axes.fiats : [];
   const labelMap = isByCrypto ? CRYPTO_LABEL : FIAT_LABEL;
+  // Если значения строковые (например, адреса кошельков) — делаем колонки
+  // широкими (320px) чтобы адреса помещались целиком. Если значения числовые
+  // (фиаты, крипты) — оставляем равномерное растяжение по контейнеру.
+  const isStringValues = config.type === 'java.lang.String';
+  const wrapperClass = isStringValues ? 'row-table row-table-strings' : 'row-table';
 
   return (
-    <div className="variable-block">
-      <div className="variable-block-title">{type.displayName}</div>
-      <div className="row-table">
-        <div className="row-table-header">
-          {items.map((it) => (
-            <div className="row-table-cell row-table-th" key={it}>
-              {labelMap[it] || it}
-            </div>
-          ))}
-        </div>
-        <div className="row-table-body">
-          {items.map((it) => {
-            const coords = {
-              variableType: type.id,
-              fiatCurrency: isByFiat ? it : null,
-              cryptoCurrency: isByCrypto ? it : null,
-              dealType: null,
-            };
-            const saved = valuesMap.get(valueKey(coords)) ?? '';
-            return (
-              <div className="row-table-cell" key={it}>
-                <RowCell
-                  type={type}
-                  savedValue={saved}
-                  coords={coords}
-                  onSave={onSaveCell}
-                />
-              </div>
-            );
-          })}
+      <div className="variable-block">
+        <div className="variable-block-title">{type.displayName}</div>
+        <div className={wrapperClass}>
+          <div className="row-table-header">
+            {items.map((it) => (
+                <div className="row-table-cell row-table-th" key={it}>
+                  {labelMap[it] || it}
+                </div>
+            ))}
+          </div>
+          <div className="row-table-body">
+            {items.map((it) => {
+              const coords = {
+                variableType: type.id,
+                fiatCurrency: isByFiat ? it : null,
+                cryptoCurrency: isByCrypto ? it : null,
+                dealType: null,
+              };
+              const saved = valuesMap.get(valueKey(coords)) ?? '';
+              return (
+                  <div className="row-table-cell" key={it}>
+                    <RowCell
+                        type={type}
+                        savedValue={saved}
+                        coords={coords}
+                        onSave={onSaveCell}
+                    />
+                  </div>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -608,98 +620,98 @@ function MatrixField({ type, valuesMap, axes, onSaveCell }) {
   const cryptoLabel = (c) => CRYPTO_LABEL[c] || c;
 
   return (
-    <div className="variable-block">
-      <div className="variable-block-title">{type.displayName}</div>
-      <div className="matrix-wrapper">
-        <table className="matrix-table">
-          <thead>
+      <div className="variable-block">
+        <div className="variable-block-title">{type.displayName}</div>
+        <div className="matrix-wrapper">
+          <table className="matrix-table">
+            <thead>
             <tr>
               <th className="matrix-corner">
                 {hasFiat ? 'Фиат \\ Крипта' : 'Тип сделки / Крипта'}
               </th>
               {cryptos.map((c) => (
-                <th
-                  key={c}
-                  className="matrix-crypto-head"
-                  colSpan={hasDeal ? dealTypes.length : 1}
-                >
-                  {cryptoLabel(c)}
-                </th>
+                  <th
+                      key={c}
+                      className="matrix-crypto-head"
+                      colSpan={hasDeal ? dealTypes.length : 1}
+                  >
+                    {cryptoLabel(c)}
+                  </th>
               ))}
             </tr>
             {hasDeal && (
-              <tr>
-                <th className="matrix-corner"></th>
-                {cryptos.map((c) =>
-                  dealTypes.map((dt) => (
-                    <th key={`${c}-${dt}`} className="matrix-deal-head">
-                      {dt === 'BUY' ? 'Покупка' : 'Продажа'}
-                    </th>
-                  ))
-                )}
-              </tr>
+                <tr>
+                  <th className="matrix-corner"></th>
+                  {cryptos.map((c) =>
+                      dealTypes.map((dt) => (
+                          <th key={`${c}-${dt}`} className="matrix-deal-head">
+                            {dt === 'BUY' ? 'Покупка' : 'Продажа'}
+                          </th>
+                      ))
+                  )}
+                </tr>
             )}
-          </thead>
-          <tbody>
+            </thead>
+            <tbody>
             {hasFiat
-              ? // строки — фиаты
+                ? // строки — фиаты
                 fiats.map((f) => (
-                  <tr key={f}>
-                    <th className="matrix-row-head">{FIAT_LABEL[f] || f}</th>
-                    {cryptos.map((c) =>
-                      dealTypes.map((dt) => {
+                    <tr key={f}>
+                      <th className="matrix-row-head">{FIAT_LABEL[f] || f}</th>
+                      {cryptos.map((c) =>
+                          dealTypes.map((dt) => {
+                            const coords = {
+                              variableType: type.id,
+                              fiatCurrency: f,
+                              cryptoCurrency: c,
+                              dealType: dt,
+                            };
+                            const saved = valuesMap.get(valueKey(coords)) ?? '';
+                            return (
+                                <td key={`${c}-${dt}`} className="matrix-cell">
+                                  <RowCell
+                                      type={type}
+                                      savedValue={saved}
+                                      coords={coords}
+                                      onSave={onSaveCell}
+                                  />
+                                </td>
+                            );
+                          })
+                      )}
+                    </tr>
+                ))
+                : // строки — типы сделок (для MIN_SUM)
+                dealTypes.map((dt) => (
+                    <tr key={dt}>
+                      <th className="matrix-row-head">
+                        {dt === 'BUY' ? 'Покупка' : 'Продажа'}
+                      </th>
+                      {cryptos.map((c) => {
                         const coords = {
                           variableType: type.id,
-                          fiatCurrency: f,
+                          fiatCurrency: null,
                           cryptoCurrency: c,
                           dealType: dt,
                         };
                         const saved = valuesMap.get(valueKey(coords)) ?? '';
                         return (
-                          <td key={`${c}-${dt}`} className="matrix-cell">
-                            <RowCell
-                              type={type}
-                              savedValue={saved}
-                              coords={coords}
-                              onSave={onSaveCell}
-                            />
-                          </td>
+                            <td key={c} className="matrix-cell">
+                              <RowCell
+                                  type={type}
+                                  savedValue={saved}
+                                  coords={coords}
+                                  onSave={onSaveCell}
+                              />
+                            </td>
                         );
-                      })
-                    )}
-                  </tr>
-                ))
-              : // строки — типы сделок (для MIN_SUM)
-                dealTypes.map((dt) => (
-                  <tr key={dt}>
-                    <th className="matrix-row-head">
-                      {dt === 'BUY' ? 'Покупка' : 'Продажа'}
-                    </th>
-                    {cryptos.map((c) => {
-                      const coords = {
-                        variableType: type.id,
-                        fiatCurrency: null,
-                        cryptoCurrency: c,
-                        dealType: dt,
-                      };
-                      const saved = valuesMap.get(valueKey(coords)) ?? '';
-                      return (
-                        <td key={c} className="matrix-cell">
-                          <RowCell
-                            type={type}
-                            savedValue={saved}
-                            coords={coords}
-                            onSave={onSaveCell}
-                          />
-                        </td>
-                      );
-                    })}
-                  </tr>
+                      })}
+                    </tr>
                 ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -712,7 +724,7 @@ function VariableRenderer({ type, valuesMap, axes, onSaveCell }) {
 
   // Сколько осей у переменной?
   const axesCount =
-    (hasDealType ? 1 : 0) + (hasFiatCurrency ? 1 : 0) + (hasCryptoCurrency ? 1 : 0);
+      (hasDealType ? 1 : 0) + (hasFiatCurrency ? 1 : 0) + (hasCryptoCurrency ? 1 : 0);
 
   // 0 осей — скаляр
   if (axesCount === 0) {
@@ -724,34 +736,34 @@ function VariableRenderer({ type, valuesMap, axes, onSaveCell }) {
     };
     const saved = valuesMap.get(valueKey(coords)) ?? '';
     return (
-      <ScalarField
-        type={type}
-        savedValue={saved}
-        onSave={(value, global) => onSaveCell(value, global, coords)}
-      />
+        <ScalarField
+            type={type}
+            savedValue={saved}
+            onSave={(value, global) => onSaveCell(value, global, coords)}
+        />
     );
   }
 
   // 1 ось — строка (по фиатам или по криптам)
   if (axesCount === 1 && !hasDealType) {
     return (
-      <RowField
-        type={type}
-        valuesMap={valuesMap}
-        axes={axes}
-        onSaveCell={onSaveCell}
-      />
+        <RowField
+            type={type}
+            valuesMap={valuesMap}
+            axes={axes}
+            onSaveCell={onSaveCell}
+        />
     );
   }
 
   // 2+ осей — матрица
   return (
-    <MatrixField
-      type={type}
-      valuesMap={valuesMap}
-      axes={axes}
-      onSaveCell={onSaveCell}
-    />
+      <MatrixField
+          type={type}
+          valuesMap={valuesMap}
+          axes={axes}
+          onSaveCell={onSaveCell}
+      />
   );
 }
 
@@ -762,22 +774,22 @@ function VariableRenderer({ type, valuesMap, axes, onSaveCell }) {
 function CollapsibleSection({ icon, label, level = 0, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className={`section section-level-${level} ${open ? 'section-open' : ''}`}>
-      <button
-        type="button"
-        className="section-header"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        {icon && <i className={`${icon} section-icon`} aria-hidden="true"></i>}
-        <span className="section-title">{label}</span>
-        <i
-          className={`fas fa-chevron-right section-chevron ${open ? 'open' : ''}`}
-          aria-hidden="true"
-        ></i>
-      </button>
-      {open && <div className="section-body">{children}</div>}
-    </div>
+      <div className={`section section-level-${level} ${open ? 'section-open' : ''}`}>
+        <button
+            type="button"
+            className="section-header"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+        >
+          {icon && <i className={`${icon} section-icon`} aria-hidden="true"></i>}
+          <span className="section-title">{label}</span>
+          <i
+              className={`fas fa-chevron-right section-chevron ${open ? 'open' : ''}`}
+              aria-hidden="true"
+          ></i>
+        </button>
+        {open && <div className="section-body">{children}</div>}
+      </div>
   );
 }
 
@@ -843,11 +855,11 @@ export default function App() {
     // Локально обновляем values (чтобы повторный F5 не понадобился)
     setValues((prev) => {
       const idx = prev.findIndex(
-        (v) =>
-          v.variableType === coords.variableType &&
-          (v.fiatCurrency ?? null) === (coords.fiatCurrency ?? null) &&
-          (v.dealType ?? null) === (coords.dealType ?? null) &&
-          (v.cryptoCurrency ?? null) === (coords.cryptoCurrency ?? null)
+          (v) =>
+              v.variableType === coords.variableType &&
+              (v.fiatCurrency ?? null) === (coords.fiatCurrency ?? null) &&
+              (v.dealType ?? null) === (coords.dealType ?? null) &&
+              (v.cryptoCurrency ?? null) === (coords.cryptoCurrency ?? null)
       );
       const record = {
         variableType: coords.variableType,
@@ -868,8 +880,8 @@ export default function App() {
     const result = {};
     for (const block of BLOCKS) {
       result[block.id] = block.subBlocks
-        ? Object.fromEntries(block.subBlocks.map((sb) => [sb.id, []]))
-        : { __direct: [] };
+          ? Object.fromEntries(block.subBlocks.map((sb) => [sb.id, []]))
+          : { __direct: [] };
     }
     for (const t of types) {
       const mapping = VAR_TO_BLOCK[t.id];
@@ -891,100 +903,100 @@ export default function App() {
   }, [types]);
 
   return (
-    <div className="app">
-      <div className="container">
-        <header className="page-header">
-          <h1>
-            <i className="fas fa-robot" aria-hidden="true"></i>
-            Управление переменными бота
-          </h1>
-        </header>
+      <div className="app">
+        <div className="container">
+          <header className="page-header">
+            <h1>
+              <i className="fas fa-robot" aria-hidden="true"></i>
+              Управление переменными бота
+            </h1>
+          </header>
 
-        <main>
-          {loading && (
-            <div className="state">
-              <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
-              <span>Загрузка…</span>
-            </div>
-          )}
+          <main>
+            {loading && (
+                <div className="state">
+                  <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <span>Загрузка…</span>
+                </div>
+            )}
 
-          {!loading && error && (
-            <div className="state state-error">
-              <i className="fas fa-exclamation-circle" aria-hidden="true"></i>
-              <span>{error}</span>
-              <button type="button" className="btn btn-secondary" onClick={loadAll}>
-                Повторить
-              </button>
-            </div>
-          )}
+            {!loading && error && (
+                <div className="state state-error">
+                  <i className="fas fa-exclamation-circle" aria-hidden="true"></i>
+                  <span>{error}</span>
+                  <button type="button" className="btn btn-secondary" onClick={loadAll}>
+                    Повторить
+                  </button>
+                </div>
+            )}
 
-          {!loading && !error && types.length === 0 && (
-            <div className="state state-empty">
-              <i className="fas fa-inbox" aria-hidden="true"></i>
-              <span>Переменных нет</span>
-            </div>
-          )}
+            {!loading && !error && types.length === 0 && (
+                <div className="state state-empty">
+                  <i className="fas fa-inbox" aria-hidden="true"></i>
+                  <span>Переменных нет</span>
+                </div>
+            )}
 
-          {!loading && !error && types.length > 0 && (
-            <div className="blocks-list">
-              {BLOCKS.map((block) => {
-                const groups = groupedTypes[block.id];
-                // Считаем сколько переменных в блоке
-                const hasContent = block.subBlocks
-                  ? block.subBlocks.some((sb) => (groups[sb.id] || []).length > 0)
-                  : (groups.__direct || []).length > 0;
-                if (!hasContent) return null;
+            {!loading && !error && types.length > 0 && (
+                <div className="blocks-list">
+                  {BLOCKS.map((block) => {
+                    const groups = groupedTypes[block.id];
+                    // Считаем сколько переменных в блоке
+                    const hasContent = block.subBlocks
+                        ? block.subBlocks.some((sb) => (groups[sb.id] || []).length > 0)
+                        : (groups.__direct || []).length > 0;
+                    if (!hasContent) return null;
 
-                return (
-                  <CollapsibleSection
-                    key={block.id}
-                    icon={block.icon}
-                    label={block.label}
-                    level={0}
-                  >
-                    {block.subBlocks
-                      ? block.subBlocks.map((sb) => {
-                          const items = groups[sb.id] || [];
-                          if (items.length === 0) return null;
-                          return (
-                            <CollapsibleSection
-                              key={sb.id}
-                              icon={sb.icon}
-                              label={sb.label}
-                              level={1}
-                            >
-                              {items.map((t) => (
-                                <VariableRenderer
-                                  key={t.id}
-                                  type={t}
-                                  valuesMap={valuesMap}
-                                  axes={axes}
-                                  onSaveCell={handleSaveCell}
-                                />
+                    return (
+                        <CollapsibleSection
+                            key={block.id}
+                            icon={block.icon}
+                            label={block.label}
+                            level={0}
+                        >
+                          {block.subBlocks
+                              ? block.subBlocks.map((sb) => {
+                                const items = groups[sb.id] || [];
+                                if (items.length === 0) return null;
+                                return (
+                                    <CollapsibleSection
+                                        key={sb.id}
+                                        icon={sb.icon}
+                                        label={sb.label}
+                                        level={1}
+                                    >
+                                      {items.map((t) => (
+                                          <VariableRenderer
+                                              key={t.id}
+                                              type={t}
+                                              valuesMap={valuesMap}
+                                              axes={axes}
+                                              onSaveCell={handleSaveCell}
+                                          />
+                                      ))}
+                                    </CollapsibleSection>
+                                );
+                              })
+                              : (groups.__direct || []).map((t) => (
+                                  <VariableRenderer
+                                      key={t.id}
+                                      type={t}
+                                      valuesMap={valuesMap}
+                                      axes={axes}
+                                      onSaveCell={handleSaveCell}
+                                  />
                               ))}
-                            </CollapsibleSection>
-                          );
-                        })
-                      : (groups.__direct || []).map((t) => (
-                          <VariableRenderer
-                            key={t.id}
-                            type={t}
-                            valuesMap={valuesMap}
-                            axes={axes}
-                            onSaveCell={handleSaveCell}
-                          />
-                        ))}
-                  </CollapsibleSection>
-                );
-              })}
-            </div>
-          )}
-        </main>
-      </div>
+                        </CollapsibleSection>
+                    );
+                  })}
+                </div>
+            )}
+          </main>
+        </div>
 
-      {toast && (
-        <Toast message={toast.message} onDone={() => setToast(null)} />
-      )}
-    </div>
+        {toast && (
+            <Toast message={toast.message} onDone={() => setToast(null)} />
+        )}
+      </div>
   );
 }
