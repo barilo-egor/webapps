@@ -11,7 +11,11 @@
     "dev:payment-types": "npm run dev -w @webapps/payment-types",
     "build:contacts": "npm run build -w @webapps/contacts",
     "build:payment-types": "npm run build -w @webapps/payment-types",
-    "build:all": "npm run build:contacts && npm run build:payment-types"
+    "build:all": "npm run build:contacts && npm run build:payment-types",
+    "dev:payment-type-categories": "npm run dev -w @webapps/payment-type-categories",
+    "build:payment-type-categories": "npm run build -w @webapps/payment-type-categories",
+    "dev:bot-variables": "npm run dev -w @webapps/bot-variables",
+    "build:bot-variables": "npm run build -w @webapps/bot-variables"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
