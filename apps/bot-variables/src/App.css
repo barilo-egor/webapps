@@ -359,6 +359,60 @@ body {
   justify-content: center;
 }
 
+/* Обёртка инпута + тултип. position:relative нужен чтобы тултип
+   позиционировался относительно неё. Минимум 0 чтобы flex её сжимал. */
+.cell-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Тултип — появляется при наведении мыши на инпут или при его фокусе.
+   Показывает полное значение если оно длиннее чем влезло в ячейку.
+   Прижат к левому краю инпута (а не центру), чтобы у крайней левой
+   ячейки таблицы не уезжал за границу экрана. */
+.cell-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: #1f2937;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Consolas', monospace;
+  max-width: min(540px, 90vw);
+  width: max-content;
+  word-break: break-all;
+  text-align: left;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0s linear 0.15s;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Стрелочка под тултипом — указывает на левую часть инпута
+   (там же, где у тултипа левый край) */
+.cell-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 24px;
+  border: 5px solid transparent;
+  border-top-color: #1f2937;
+}
+
+/* Показываем тултип при наведении на обёртку или фокусе на инпуте */
+.cell-input-wrap:hover .cell-tooltip,
+.cell-input-wrap:focus-within .cell-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.15s ease, visibility 0s linear 0s;
+}
+
 /* =========================================================
    ROW TABLE (одна строка: крипты или фиаты)
    ========================================================= */
@@ -385,19 +439,17 @@ body {
   text-align: center;
 }
 
-/* Модификатор для row-table со строковыми значениями (адреса кошельков).
-   Адреса длинные (до 95 символов у Monero), нужна большая мин. ширина каждой
-   ячейки. Если экран узкий — родительский overflow-x:auto даст скролл.
-   flex-shrink:0 нужен чтобы flex-ячейки не сжимались под min-width,
-   а flex-basis:320px задаёт фиксированную базовую ширину. */
+/* Для row-table со строковыми значениями (адреса кошельков) задаём минимум
+   180px на ячейку — чтобы на узком окне видно было хотя бы 30-40 символов
+   адреса. Если экран узкий — родительский overflow-x:auto даст скролл. */
+.row-table-strings .row-table-cell {
+  flex: 0 0 180px;
+  min-width: 180px;
+}
 .row-table-strings .row-table-header,
 .row-table-strings .row-table-body {
   width: max-content;
   min-width: 100%;
-}
-.row-table-strings .row-table-cell {
-  flex: 0 0 320px;
-  min-width: 320px;
 }
 
 .row-table-th {
