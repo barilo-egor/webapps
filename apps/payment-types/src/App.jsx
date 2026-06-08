@@ -51,7 +51,7 @@ const apiFetch = async (url, options = {}) => {
   return res.json();
 };
 
-const paymentTypesApi = {
+const realApi = {
   list: () => apiFetch(API_BASE),
   create: (data) =>
       apiFetch(API_BASE, { method: 'POST', body: JSON.stringify(data) }),
@@ -64,6 +64,120 @@ const paymentTypesApi = {
   // в UI показываем displayName, на бэк шлём name.
   listFiats: () => apiFetch('/api/constants/fiat'),
 };
+
+// =============================================================
+// MOCK API (для локальной разработки без бэкенда)
+// =============================================================
+// Включается через VITE_USE_MOCK=1 в .env.local. Хранит данные в памяти
+// (исчезают при перезагрузке страницы) и имитирует задержку сети.
+// =============================================================
+let mockData = [
+  {
+    pid: 1,
+    name: 'Карта',
+    dealType: 'SELL',
+    fiatCurrency: 'RUB',
+    minSum: 500,
+    requisiteAdditionalText: '',
+    isOn: true,
+    discounts: [],
+  },
+  {
+    pid: 2,
+    name: 'СБП',
+    dealType: 'SELL',
+    fiatCurrency: 'RUB',
+    minSum: 15000,
+    requisiteAdditionalText: '',
+    isOn: false,
+    discounts: [],
+  },
+  {
+    pid: 3,
+    name: 'Транс',
+    dealType: 'SELL',
+    fiatCurrency: 'BYN',
+    minSum: 1000,
+    requisiteAdditionalText: 'Минимум 1000 BYN',
+    isOn: true,
+    discounts: [{ percent: 5, maxAmount: 50 }],
+  },
+  {
+    pid: 4,
+    name: 'Карта',
+    dealType: 'BUY',
+    fiatCurrency: 'RUB',
+    minSum: 2000,
+    requisiteAdditionalText: '',
+    isOn: true,
+    discounts: [],
+  },
+  {
+    pid: 5,
+    name: 'СБП',
+    dealType: 'BUY',
+    fiatCurrency: 'BYN',
+    minSum: 50000,
+    requisiteAdditionalText: '',
+    isOn: false,
+    discounts: [],
+  },
+];
+let mockPidCounter = 100;
+
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const mockApi = {
+  list: async () => {
+    await delay(300);
+    return [...mockData];
+  },
+  create: async (data) => {
+    await delay(200);
+    const created = { ...data, pid: mockPidCounter++, discounts: [] };
+    mockData.push(created);
+    return created;
+  },
+  update: async (data) => {
+    await delay(200);
+    const idx = mockData.findIndex((it) => it.pid === data.pid);
+    if (idx === -1) throw new Error('Not found');
+    mockData[idx] = { ...mockData[idx], ...data };
+    return mockData[idx];
+  },
+  remove: async (pid) => {
+    await delay(200);
+    mockData = mockData.filter((it) => it.pid !== pid);
+    return null;
+  },
+  toggleActive: async (pid, isOn) => {
+    await delay(150);
+    const idx = mockData.findIndex((it) => it.pid === pid);
+    if (idx === -1) throw new Error('Not found');
+    mockData[idx] = { ...mockData[idx], isOn };
+    return mockData[idx];
+  },
+  listFiats: async () => {
+    await delay(100);
+    // Возвращаем тот же формат что и реальный бэк: [{name, displayName}, ...]
+    return [
+      { name: 'RUB', displayName: 'Рус. руб' },
+      { name: 'BYN', displayName: 'Бел. руб' },
+      { name: 'USD', displayName: 'Доллар США' },
+      { name: 'EUR', displayName: 'Евро' },
+      { name: 'KZT', displayName: 'Тенге' },
+      { name: 'UAH', displayName: 'Гривна' },
+    ];
+  },
+};
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === '1';
+const paymentTypesApi = USE_MOCK ? mockApi : realApi;
+
+if (USE_MOCK) {
+  // eslint-disable-next-line no-console
+  console.info('[payment-types] Работает в MOCK-режиме (VITE_USE_MOCK=1)');
+}
 
 // =============================================================
 // СПРАВОЧНИКИ
@@ -285,12 +399,23 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
               </div>
               <div className="discounts-table">
                 <div className="discounts-thead">
-                  <div>Макс. сумма</div>
                   <div>Процент (%)</div>
+                  <div>Макс. сумма</div>
                   <div></div>
                 </div>
                 {discounts.map((d, idx) => (
                     <div className="discounts-row" key={idx}>
+                      <input
+                          type="number"
+                          value={d.percent}
+                          onChange={(e) =>
+                              handleDiscountChange(idx, 'percent', e.target.value)
+                          }
+                          placeholder="%"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.1"
+                      />
                       <input
                           type="text"
                           value={d.maxAmount}
@@ -302,17 +427,6 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
                           }}
                           placeholder="Макс. сумма"
                           inputMode="decimal"
-                      />
-                      <input
-                          type="number"
-                          value={d.percent}
-                          onChange={(e) =>
-                              handleDiscountChange(idx, 'percent', e.target.value)
-                          }
-                          placeholder="%"
-                          inputMode="decimal"
-                          min="0"
-                          step="0.1"
                       />
                       <button
                           type="button"
@@ -464,34 +578,6 @@ function TableSection({
     const f = (fiats || []).find((x) => x.name === name);
     return f ? f.displayName : name;
   };
-
-  // Ширины колонок (в px). Минимально-необходимые значения.
-  // Колонка "Название" — не задана: занимает всё оставшееся место.
-  const [colWidths, setColWidths] = useState({
-    toggle: 56,
-    fiat: 90,
-    minsum: 96,
-  });
-
-  // Drag-to-resize: на mousedown — ловим mousemove, на mouseup — отпускаем
-  const startResize = (e, colKey) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const startX = e.clientX;
-    const startWidth = colWidths[colKey] || 100;
-    const onMouseMove = (ev) => {
-      const delta = ev.clientX - startX;
-      const next = Math.max(40, startWidth + delta);
-      setColWidths((prev) => ({ ...prev, [colKey]: next }));
-    };
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
-
   return (
       <div className={`section ${open ? 'section-open' : ''}`}>
         <button
@@ -521,42 +607,13 @@ function TableSection({
                   <div className="section-empty">Нет записей</div>
               ) : (
                   <div className="table-wrapper">
-                    <table
-                        className="pt-table"
-                        style={{
-                          '--col-toggle': colWidths.toggle + 'px',
-                          '--col-fiat': colWidths.fiat + 'px',
-                          '--col-minsum': colWidths.minsum + 'px',
-                        }}
-                    >
+                    <table className="pt-table">
                       <thead>
                       <tr>
-                        <th className="col-toggle">
-                          <i
-                              className="fas fa-power-off"
-                              aria-label="Включение"
-                              title="Включение"
-                          ></i>
-                          <span
-                              className="col-resize-handle"
-                              onMouseDown={(e) => startResize(e, 'toggle')}
-                          />
-                        </th>
-                        <th className="col-name">Название</th>
-                        <th className="col-fiat">
-                          Фиат
-                          <span
-                              className="col-resize-handle"
-                              onMouseDown={(e) => startResize(e, 'fiat')}
-                          />
-                        </th>
-                        <th className="col-minsum">
-                          Мин.сум.
-                          <span
-                              className="col-resize-handle"
-                              onMouseDown={(e) => startResize(e, 'minsum')}
-                          />
-                        </th>
+                        <th className="col-toggle">Включение</th>
+                        <th>Название</th>
+                        <th>Фиатная валюта</th>
+                        <th>Минимальная сумма</th>
                         <th aria-label="Удаление" className="col-action"></th>
                       </tr>
                       </thead>
@@ -584,8 +641,8 @@ function TableSection({
                             <td className="cell-name" title={it.name}>
                               {it.name}
                             </td>
-                            <td className="cell-fiat">{fiatLabel(it.fiatCurrency)}</td>
-                            <td className="cell-minsum">{formatNumber(it.minSum)}</td>
+                            <td>{fiatLabel(it.fiatCurrency)}</td>
+                            <td>{formatNumber(it.minSum)}</td>
                             <td className="cell-action">
                               <button
                                   type="button"
@@ -639,14 +696,12 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Список валют с бэка [{name, displayName}, ...]
   const [fiats, setFiats] = useState([]);
 
   const [editing, setEditing] = useState(null); // null | 'new' | объект
   const [toDelete, setToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Изначально оба блока свёрнуты (как на Рисунке №1)
   const [openSections, setOpenSections] = useState({ BUY: false, SELL: false });
 
   useEffect(() => {
@@ -663,6 +718,7 @@ export default function App() {
         .listFiats()
         .then((data) => setFiats(Array.isArray(data) ? data : []))
         .catch(() => {
+
           setFiats([]);
         });
   }, []);
@@ -724,7 +780,11 @@ export default function App() {
     setIsSubmitting(true);
     try {
       await paymentTypesApi.remove(toDelete.pid);
-      setItems((prev) => prev.filter((it) => it.pid !== toDelete.pid));
+      // Перезагружаем весь список с бэка, чтобы UI отражал реальное состояние БД
+      // (а не наше предположение о том что DELETE сработал).
+      // Если бэк по какой-то причине не удалил запись — она снова появится,
+      // и пользователь не будет введён в заблуждение.
+      await loadItems();
       setToDelete(null);
       haptic('success');
     } catch (e) {
@@ -753,6 +813,10 @@ export default function App() {
       alert('Не удалось изменить статус: ' + (e.message || ''));
     }
   };
+
+  // Группировка по типу сделки.
+  // Сортировку по fiatCurrency делает бэк (см. ТЗ),
+  // фронт показывает в полученном порядке.
   const buyItems = items.filter((it) => it.dealType === 'BUY');
   const sellItems = items.filter((it) => it.dealType === 'SELL');
 
