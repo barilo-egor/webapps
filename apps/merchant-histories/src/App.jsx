@@ -32,13 +32,79 @@ const realApi = {
   // Тело можно оставить пустым ({}) чтобы получить все записи и фильтровать на клиенте,
   // либо передать фильтр чтобы фильтровал бэк (см. комментарий в loadAll).
   list: (body = {}) =>
-    apiFetch('/api/merchant-histories', { method: 'POST', body: JSON.stringify(body) }),
+      apiFetch('/api/merchant-histories', { method: 'POST', body: JSON.stringify(body) }),
 };
 
-const api = realApi;
+// =============================================================
+// MOCK API (для локальной разработки без бэкенда)
+// =============================================================
 
-// Небольшая задержка для маски загрузки при «Поиск».
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const MOCK_MERCHANTS = [
+  'ALFA_TEAM', 'NOROS', 'YOLO', 'DEORA', 'LOTRIEN',
+  'EXTASY_PAY', 'BASE_51', 'ECLIPSE_GATE', 'SOUZ', 'MERIDIAN_PAY',
+  'ASGARD', 'GAMBIT', 'STORM_TRADE', 'PAY_LEE', 'CROCO_PAY',
+];
+const MOCK_METHODS = ['CARD', 'SBP', 'SBER_QR', 'TO_CARD'];
+const MOCK_BOTS = ['MainBot', 'PaymentBot', 'TradeBot', 'SupportBot', 'rce-dev3'];
+const MOCK_BANKS = ['СберБанк', 'Т-Банк', 'ВТБ', 'Озон Банк', 'Альфа-Банк'];
+
+// Детерминированный генератор тестовых записей (95 штук, чтобы было >3 страниц).
+function buildMockRecords() {
+  const rows = [];
+  let seed = 20260603;
+  const rnd = () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  const base = Date.parse('2026-06-03T15:22:28Z');
+  for (let i = 0; i < 95; i++) {
+    const method = MOCK_METHODS[Math.floor(rnd() * MOCK_METHODS.length)];
+    const hasDetails = method === 'CARD' || method === 'TO_CARD';
+    const reqAmount = Math.round((1000 + rnd() * 59000) * 100) / 100;
+    const hasMerchAmount = rnd() > 0.4;
+    const created = new Date(base - i * (rnd() * 9 + 1) * 3600 * 1000).toISOString();
+    rows.push({
+      dealId: 1780500142646 - Math.floor(rnd() * 9e8),
+      userId: 100000000 + Math.floor(rnd() * 899999999),
+      initiatorApp: MOCK_BOTS[Math.floor(rnd() * MOCK_BOTS.length)],
+      createdAt: created,
+      merchant: MOCK_MERCHANTS[Math.floor(rnd() * MOCK_MERCHANTS.length)],
+      merchantOrderId: String(100000 + Math.floor(rnd() * 900000)),
+      requestedAmount: reqAmount,
+      merchantAmount: hasMerchAmount
+          ? Math.round((reqAmount + (rnd() - 0.5) * 4000) * 100) / 100
+          : null,
+      method,
+      details: hasDetails
+          ? `${MOCK_BANKS[Math.floor(rnd() * MOCK_BANKS.length)]} ${String(2000000000000000 + Math.floor(rnd() * 8e15)).slice(0, 16)}`
+          : null,
+    });
+  }
+  return rows;
+}
+
+const MOCK_RECORDS = buildMockRecords();
+
+const mockApi = {
+  filters: async () => {
+    await delay(120);
+    return { merchants: [...MOCK_MERCHANTS] };
+  },
+  list: async () => {
+    await delay(160);
+    // Mock всегда отдаёт все записи — фильтрация на клиенте.
+    return JSON.parse(JSON.stringify(MOCK_RECORDS));
+  },
+};
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === '1';
+const api = USE_MOCK ? mockApi : realApi;
+if (USE_MOCK) {
+  // eslint-disable-next-line no-console
+  console.info('[merchant-history] Работает в MOCK-режиме (VITE_USE_MOCK=1)');
+}
 
 // =============================================================
 // ОТОБРАЖАЕМЫЕ ИМЕНА
@@ -54,10 +120,10 @@ function merchantLabel(code) {
   if (!code) return '';
   if (MERCHANT_LABEL[code]) return MERCHANT_LABEL[code];
   return code
-    .toLowerCase()
-    .split('_')
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join('');
+      .toLowerCase()
+      .split('_')
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join('');
 }
 
 // Код метода → подпись (по макету: СБП, Карта…). Остальные — авто.
@@ -71,10 +137,10 @@ function methodLabel(code) {
   if (!code) return '';
   if (METHOD_LABEL[code]) return METHOD_LABEL[code];
   return code
-    .toLowerCase()
-    .split('_')
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(' ');
+      .toLowerCase()
+      .split('_')
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join(' ');
 }
 
 // =============================================================
@@ -88,8 +154,8 @@ function formatDateTime(iso) {
   if (isNaN(d)) return iso;
   const p = (n) => String(n).padStart(2, '0');
   return (
-    `${p(d.getUTCDate())}.${p(d.getUTCMonth() + 1)}.${d.getUTCFullYear()} ` +
-    `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`
+      `${p(d.getUTCDate())}.${p(d.getUTCMonth() + 1)}.${d.getUTCFullYear()} ` +
+      `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`
   );
 }
 
@@ -125,7 +191,7 @@ const EMPTY_FILTER = {
 };
 
 const includesCI = (haystack, needle) =>
-  String(haystack ?? '').toLowerCase().includes(needle.trim().toLowerCase());
+    String(haystack ?? '').toLowerCase().includes(needle.trim().toLowerCase());
 
 function applyFilters(rows, f) {
   return rows.filter((r) => {
@@ -166,13 +232,13 @@ function applyFilters(rows, f) {
 
 function FilterField({ icon, label, children }) {
   return (
-    <div className="filter-field">
-      <label className="filter-label">
-        <i className={`${icon} filter-label-icon`} aria-hidden="true"></i>
-        {label}
-      </label>
-      {children}
-    </div>
+      <div className="filter-field">
+        <label className="filter-label">
+          <i className={`${icon} filter-label-icon`} aria-hidden="true"></i>
+          {label}
+        </label>
+        {children}
+      </div>
   );
 }
 
@@ -195,40 +261,40 @@ function MerchantSelect({ options, selected, onChange }) {
   };
 
   const display =
-    selected.length === 0
-      ? 'Все'
-      : selected.map(merchantLabel).join(', ');
+      selected.length === 0
+          ? 'Все'
+          : selected.map(merchantLabel).join(', ');
 
   return (
-    <div className="ms" ref={ref}>
-      <button
-        type="button"
-        className={`ms-control ${selected.length ? 'ms-control-filled' : ''}`}
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span className="ms-value">{display}</span>
-        <i className={`fas fa-chevron-down ms-chevron ${open ? 'open' : ''}`} aria-hidden="true"></i>
-      </button>
-      {open && (
-        <div className="ms-dropdown" role="listbox">
-          {options.map((code) => {
-            const isSel = selected.includes(code);
-            return (
-              <div
-                key={code}
-                className={`ms-option ${isSel ? 'ms-option-selected' : ''}`}
-                role="option"
-                aria-selected={isSel}
-                onClick={() => toggle(code)}
-              >
-                {merchantLabel(code)}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+      <div className="ms" ref={ref}>
+        <button
+            type="button"
+            className={`ms-control ${selected.length ? 'ms-control-filled' : ''}`}
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+        >
+          <span className="ms-value">{display}</span>
+          <i className={`fas fa-chevron-down ms-chevron ${open ? 'open' : ''}`} aria-hidden="true"></i>
+        </button>
+        {open && (
+            <div className="ms-dropdown" role="listbox">
+              {options.map((code) => {
+                const isSel = selected.includes(code);
+                return (
+                    <div
+                        key={code}
+                        className={`ms-option ${isSel ? 'ms-option-selected' : ''}`}
+                        role="option"
+                        aria-selected={isSel}
+                        onClick={() => toggle(code)}
+                    >
+                      {merchantLabel(code)}
+                    </div>
+                );
+              })}
+            </div>
+        )}
+      </div>
   );
 }
 
@@ -237,144 +303,144 @@ function FilterPanel({ draft, setDraft, merchants, onSearch, onReset, busy }) {
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
 
   return (
-    <div className="section">
-      <button
-        type="button"
-        className="section-header"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <i className="fas fa-sliders-h section-icon" aria-hidden="true"></i>
-        <span className="section-title">Фильтрация</span>
-        <i className={`fas fa-chevron-right section-chevron ${open ? 'open' : ''}`} aria-hidden="true"></i>
-      </button>
+      <div className="section">
+        <button
+            type="button"
+            className="section-header"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+        >
+          <i className="fas fa-sliders-h section-icon" aria-hidden="true"></i>
+          <span className="section-title">Фильтрация</span>
+          <i className={`fas fa-chevron-right section-chevron ${open ? 'open' : ''}`} aria-hidden="true"></i>
+        </button>
 
-      {open && (
-        <div className="section-body">
-          <div className="filter-grid">
-            {/* Дата */}
-            <FilterField icon="fas fa-calendar-alt" label="Дата">
-              <div className="date-field">
-                <select
-                  className="select"
-                  value={draft.dateMode}
-                  onChange={(e) => set({ dateMode: e.target.value })}
-                >
-                  <option value="equal">Равна</option>
-                  <option value="range">Диапазон</option>
-                </select>
-                {draft.dateMode === 'equal' ? (
-                  <input
-                    type="date"
-                    className="input"
-                    value={draft.dateEqual}
-                    onChange={(e) => set({ dateEqual: e.target.value })}
-                  />
-                ) : (
-                  <div className="date-range">
-                    <input
-                      type="date"
-                      className="input"
-                      value={draft.dateFrom}
-                      onChange={(e) => set({ dateFrom: e.target.value })}
-                    />
-                    <input
-                      type="date"
-                      className="input"
-                      value={draft.dateTo}
-                      onChange={(e) => set({ dateTo: e.target.value })}
-                    />
+        {open && (
+            <div className="section-body">
+              <div className="filter-grid">
+                {/* Дата */}
+                <FilterField icon="fas fa-calendar-alt" label="Дата">
+                  <div className="date-field">
+                    <select
+                        className="select"
+                        value={draft.dateMode}
+                        onChange={(e) => set({ dateMode: e.target.value })}
+                    >
+                      <option value="equal">Равна</option>
+                      <option value="range">Диапазон</option>
+                    </select>
+                    {draft.dateMode === 'equal' ? (
+                        <input
+                            type="date"
+                            className="input"
+                            value={draft.dateEqual}
+                            onChange={(e) => set({ dateEqual: e.target.value })}
+                        />
+                    ) : (
+                        <div className="date-range">
+                          <input
+                              type="date"
+                              className="input"
+                              value={draft.dateFrom}
+                              onChange={(e) => set({ dateFrom: e.target.value })}
+                          />
+                          <input
+                              type="date"
+                              className="input"
+                              value={draft.dateTo}
+                              onChange={(e) => set({ dateTo: e.target.value })}
+                          />
+                        </div>
+                    )}
                   </div>
-                )}
+                </FilterField>
+
+                {/* № сделки */}
+                <FilterField icon="fas fa-hashtag" label="№ сделки">
+                  <input
+                      type="text"
+                      inputMode="numeric"
+                      className="input"
+                      value={draft.dealId}
+                      onChange={(e) => set({ dealId: e.target.value.replace(/[^\d]/g, '') })}
+                  />
+                </FilterField>
+
+                {/* Реквизиты */}
+                <FilterField icon="fas fa-credit-card" label="Реквизиты">
+                  <input
+                      type="text"
+                      className="input"
+                      value={draft.details}
+                      onChange={(e) => set({ details: e.target.value })}
+                  />
+                </FilterField>
+
+                {/* Название бота */}
+                <FilterField icon="fas fa-robot" label="Название бота">
+                  <input
+                      type="text"
+                      className="input"
+                      value={draft.initiatorApp}
+                      onChange={(e) => set({ initiatorApp: e.target.value })}
+                  />
+                </FilterField>
+
+                {/* Мерчант */}
+                <FilterField icon="fas fa-store" label="Мерчант">
+                  <MerchantSelect
+                      options={merchants}
+                      selected={draft.merchants}
+                      onChange={(merchants) => set({ merchants })}
+                  />
+                </FilterField>
+
+                {/* Сумма */}
+                <FilterField icon="fas fa-coins" label="Сумма">
+                  <input
+                      type="text"
+                      inputMode="decimal"
+                      className="input"
+                      value={draft.amount}
+                      onChange={(e) => set({ amount: e.target.value.replace(',', '.').replace(/[^\d.]/g, '') })}
+                  />
+                </FilterField>
+
+                {/* Идентификатор ордера */}
+                <FilterField icon="fas fa-ticket-alt" label="Идентификатор ордера">
+                  <input
+                      type="text"
+                      className="input"
+                      value={draft.merchantOrderId}
+                      onChange={(e) => set({ merchantOrderId: e.target.value })}
+                  />
+                </FilterField>
+
+                {/* Chat ID пользователя */}
+                <FilterField icon="fab fa-telegram-plane" label="Chat ID пользователя">
+                  <input
+                      type="text"
+                      inputMode="numeric"
+                      className="input"
+                      value={draft.userId}
+                      onChange={(e) => set({ userId: e.target.value.replace(/[^\d]/g, '') })}
+                  />
+                </FilterField>
               </div>
-            </FilterField>
 
-            {/* № сделки */}
-            <FilterField icon="fas fa-hashtag" label="№ сделки">
-              <input
-                type="text"
-                inputMode="numeric"
-                className="input"
-                value={draft.dealId}
-                onChange={(e) => set({ dealId: e.target.value.replace(/[^\d]/g, '') })}
-              />
-            </FilterField>
-
-            {/* Реквизиты */}
-            <FilterField icon="fas fa-credit-card" label="Реквизиты">
-              <input
-                type="text"
-                className="input"
-                value={draft.details}
-                onChange={(e) => set({ details: e.target.value })}
-              />
-            </FilterField>
-
-            {/* Название бота */}
-            <FilterField icon="fas fa-robot" label="Название бота">
-              <input
-                type="text"
-                className="input"
-                value={draft.initiatorApp}
-                onChange={(e) => set({ initiatorApp: e.target.value })}
-              />
-            </FilterField>
-
-            {/* Мерчант */}
-            <FilterField icon="fas fa-store" label="Мерчант">
-              <MerchantSelect
-                options={merchants}
-                selected={draft.merchants}
-                onChange={(merchants) => set({ merchants })}
-              />
-            </FilterField>
-
-            {/* Сумма */}
-            <FilterField icon="fas fa-coins" label="Сумма">
-              <input
-                type="text"
-                inputMode="decimal"
-                className="input"
-                value={draft.amount}
-                onChange={(e) => set({ amount: e.target.value.replace(',', '.').replace(/[^\d.]/g, '') })}
-              />
-            </FilterField>
-
-            {/* Идентификатор ордера */}
-            <FilterField icon="fas fa-ticket-alt" label="Идентификатор ордера">
-              <input
-                type="text"
-                className="input"
-                value={draft.merchantOrderId}
-                onChange={(e) => set({ merchantOrderId: e.target.value })}
-              />
-            </FilterField>
-
-            {/* Chat ID пользователя */}
-            <FilterField icon="fab fa-telegram-plane" label="Chat ID пользователя">
-              <input
-                type="text"
-                inputMode="numeric"
-                className="input"
-                value={draft.userId}
-                onChange={(e) => set({ userId: e.target.value.replace(/[^\d]/g, '') })}
-              />
-            </FilterField>
-          </div>
-
-          <div className="filter-actions">
-            <button type="button" className="btn btn-secondary" onClick={onReset} disabled={busy}>
-              <i className="fas fa-undo-alt" aria-hidden="true"></i>
-              Сбросить
-            </button>
-            <button type="button" className="btn btn-primary" onClick={onSearch} disabled={busy}>
-              <i className="fas fa-search" aria-hidden="true"></i>
-              Поиск
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+              <div className="filter-actions">
+                <button type="button" className="btn btn-secondary" onClick={onReset} disabled={busy}>
+                  <i className="fas fa-undo-alt" aria-hidden="true"></i>
+                  Сбросить
+                </button>
+                <button type="button" className="btn btn-primary" onClick={onSearch} disabled={busy}>
+                  <i className="fas fa-search" aria-hidden="true"></i>
+                  Поиск
+                </button>
+              </div>
+            </div>
+        )}
+      </div>
   );
 }
 
@@ -397,41 +463,39 @@ const COLUMNS = [
 
 function HistoryTable({ rows }) {
   return (
-    <div className="table-wrapper">
-      <div className="htable">
-        <div className="htrow htable-head">
-          {COLUMNS.map((c) => (
-            <div key={c.key} className={`hcell hhead hcell-${c.align}`}>
-              {c.tooltip ? (
-                <span className="th-tooltip" title={c.tooltip}>
+      <div className="table-wrapper">
+        <div className="htable">
+          <div className="htrow htable-head">
+            {COLUMNS.map((c) => (
+                <div key={c.key} className={`hcell hhead hcell-${c.align}`}>
+                  {c.tooltip ? (
+                      <span className="th-tooltip" title={c.tooltip}>
                   {c.title}
                 </span>
-              ) : (
-                c.title
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="htable-body">
+                  ) : (
+                      c.title
+                  )}
+                </div>
+            ))}
+          </div>
           {rows.map((r) => (
-            <div className="htrow" key={r.dealId + '|' + r.createdAt}>
-              <div className="hcell mono">{r.dealId}</div>
-              <div className="hcell mono">{formatDateTime(r.createdAt)}</div>
-              <div className="hcell" title={r.details || ''}>{r.details || '—'}</div>
-              <div className="hcell" title={r.initiatorApp || ''}>{r.initiatorApp || '—'}</div>
-              <div className="hcell" title={merchantLabel(r.merchant)}>{merchantLabel(r.merchant)}</div>
-              <div className="hcell hcell-right mono">{formatAmount(r.merchantAmount)}</div>
-              <div className="hcell hcell-right mono">{formatAmount(r.requestedAmount)}</div>
-              <div className="hcell hcell-center">
-                <span className="method-badge">{methodLabel(r.method)}</span>
+              <div className="htrow" key={r.dealId + '|' + r.createdAt}>
+                <div className="hcell mono">{r.dealId}</div>
+                <div className="hcell mono">{formatDateTime(r.createdAt)}</div>
+                <div className="hcell" title={r.details || ''}>{r.details || '—'}</div>
+                <div className="hcell" title={r.initiatorApp || ''}>{r.initiatorApp || '—'}</div>
+                <div className="hcell" title={merchantLabel(r.merchant)}>{merchantLabel(r.merchant)}</div>
+                <div className="hcell hcell-right mono">{formatAmount(r.merchantAmount)}</div>
+                <div className="hcell hcell-right mono">{formatAmount(r.requestedAmount)}</div>
+                <div className="hcell hcell-center">
+                  <span className="method-badge">{methodLabel(r.method)}</span>
+                </div>
+                <div className="hcell mono" title={r.merchantOrderId || ''}>{r.merchantOrderId || '—'}</div>
+                <div className="hcell mono">{r.userId}</div>
               </div>
-              <div className="hcell mono" title={r.merchantOrderId || ''}>{r.merchantOrderId || '—'}</div>
-              <div className="hcell mono">{r.userId}</div>
-            </div>
           ))}
         </div>
       </div>
-    </div>
   );
 }
 
@@ -442,30 +506,30 @@ function HistoryTable({ rows }) {
 function Pagination({ page, pageCount, total, onPage }) {
   if (pageCount <= 1) return null;
   return (
-    <div className="pagination">
-      <span className="pagination-info">Всего записей: {total}</span>
-      <div className="pagination-controls">
-        <button
-          type="button"
-          className="page-btn"
-          onClick={() => onPage(page - 1)}
-          disabled={page <= 1}
-          aria-label="Предыдущая страница"
-        >
-          <i className="fas fa-chevron-left" aria-hidden="true"></i>
-        </button>
-        <span className="page-current">{page} / {pageCount}</span>
-        <button
-          type="button"
-          className="page-btn"
-          onClick={() => onPage(page + 1)}
-          disabled={page >= pageCount}
-          aria-label="Следующая страница"
-        >
-          <i className="fas fa-chevron-right" aria-hidden="true"></i>
-        </button>
+      <div className="pagination">
+        <span className="pagination-info">Всего записей: {total}</span>
+        <div className="pagination-controls">
+          <button
+              type="button"
+              className="page-btn"
+              onClick={() => onPage(page - 1)}
+              disabled={page <= 1}
+              aria-label="Предыдущая страница"
+          >
+            <i className="fas fa-chevron-left" aria-hidden="true"></i>
+          </button>
+          <span className="page-current">{page} / {pageCount}</span>
+          <button
+              type="button"
+              className="page-btn"
+              onClick={() => onPage(page + 1)}
+              disabled={page >= pageCount}
+              aria-label="Следующая страница"
+          >
+            <i className="fas fa-chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -521,8 +585,8 @@ export default function App() {
   const filtered = useMemo(() => applyFilters(allRows, applied), [allRows, applied]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = useMemo(
-    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filtered, page]
+      () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+      [filtered, page]
   );
 
   const handleSearch = async () => {
@@ -541,72 +605,72 @@ export default function App() {
   };
 
   return (
-    <div className="app">
-      <div className="container">
-        <header className="page-header">
-          <h1>
-            <i className="fas fa-history" aria-hidden="true"></i>
-            История мерчантов
-          </h1>
-        </header>
+      <div className="app">
+        <div className="container">
+          <header className="page-header">
+            <h1>
+              <i className="fas fa-history" aria-hidden="true"></i>
+              История мерчантов
+            </h1>
+          </header>
 
-        <main>
-          {loading && (
-            <div className="state">
-              <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
-              <span>Загрузка…</span>
-            </div>
-          )}
+          <main>
+            {loading && (
+                <div className="state">
+                  <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <span>Загрузка…</span>
+                </div>
+            )}
 
-          {!loading && error && (
-            <div className="state state-error">
-              <i className="fas fa-exclamation-circle" aria-hidden="true"></i>
-              <span>{error}</span>
-              <button type="button" className="btn btn-secondary" onClick={loadAll}>
-                Повторить
-              </button>
-            </div>
-          )}
+            {!loading && error && (
+                <div className="state state-error">
+                  <i className="fas fa-exclamation-circle" aria-hidden="true"></i>
+                  <span>{error}</span>
+                  <button type="button" className="btn btn-secondary" onClick={loadAll}>
+                    Повторить
+                  </button>
+                </div>
+            )}
 
-          {!loading && !error && (
-            <>
-              <FilterPanel
-                draft={draft}
-                setDraft={setDraft}
-                merchants={merchants}
-                onSearch={handleSearch}
-                onReset={handleReset}
-                busy={searching}
-              />
+            {!loading && !error && (
+                <div className="results-area">
+                  <FilterPanel
+                      draft={draft}
+                      setDraft={setDraft}
+                      merchants={merchants}
+                      onSearch={handleSearch}
+                      onReset={handleReset}
+                      busy={searching}
+                  />
 
-              <div className="results">
-                {searching && (
-                  <div className="results-mask">
-                    <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <div className="results">
+                    {searching && (
+                        <div className="results-mask">
+                          <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                        </div>
+                    )}
+
+                    {filtered.length === 0 ? (
+                        <div className="state state-empty">
+                          <i className="fas fa-inbox" aria-hidden="true"></i>
+                          <span>Записей не найдено</span>
+                        </div>
+                    ) : (
+                        <>
+                          <HistoryTable rows={pageRows} />
+                          <Pagination
+                              page={page}
+                              pageCount={pageCount}
+                              total={filtered.length}
+                              onPage={setPage}
+                          />
+                        </>
+                    )}
                   </div>
-                )}
-
-                {filtered.length === 0 ? (
-                  <div className="state state-empty">
-                    <i className="fas fa-inbox" aria-hidden="true"></i>
-                    <span>Записей не найдено</span>
-                  </div>
-                ) : (
-                  <>
-                    <HistoryTable rows={pageRows} />
-                    <Pagination
-                      page={page}
-                      pageCount={pageCount}
-                      total={filtered.length}
-                      onPage={setPage}
-                    />
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </main>
+                </div>
+            )}
+          </main>
+        </div>
       </div>
-    </div>
   );
 }

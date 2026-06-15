@@ -90,6 +90,7 @@ body {
    STATES
    ========================================================= */
 .state {
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -110,7 +111,17 @@ body {
 /* =========================================================
    СВОРАЧИВАЕМАЯ ПАНЕЛЬ ФИЛЬТРОВ
    ========================================================= */
+/* Контейнер фильтров + таблицы: ужимается по ширине таблицы и центрируется.
+   Панель фильтров растягивается на эту же ширину (см. .section width:100%),
+   поэтому рамки фильтров и таблицы совпадают. */
+.results-area {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
 .section {
+  width: 100%;
   background: var(--tg-section-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -148,10 +159,12 @@ body {
   border-top: 1px solid var(--border);
 }
 
-/* Сетка полей фильтра — авто-колонки, на широком экране 4 в ряд */
+/* Сетка полей фильтра — 4 колонки в ряд (как на рисунке №1).
+   Фиксированное число колонок (а не auto-fit) нужно, чтобы панель не
+   «распухала» по содержимому и ширину контейнера диктовала таблица. */
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -297,7 +310,11 @@ body {
 /* =========================================================
    ТАБЛИЦА ИСТОРИИ
    ========================================================= */
-.results { position: relative; }
+.results {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
 
 .results-mask {
   position: absolute;
@@ -314,68 +331,66 @@ body {
 .results-mask i { font-size: 28px; color: var(--accent); }
 
 .table-wrapper {
+  display: inline-block;       /* облегает таблицу по её ширине, а не на всю строку */
+  max-width: 100%;             /* но не шире контейнера — тогда включится скролл */
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--tg-section-bg);
+  vertical-align: top;
 }
 
-/* Таблица на CSS-grid. У каждой колонки minmax(МИНИМУМ, 1fr):
-   - МИНИМУМ — это минимальная ширина из ТЗ (с запасом), ниже неё колонка не сожмётся;
-   - 1fr у всех одинаковый → лишняя ширина делится между колонками ПОРОВНУ
-     (одинаковая добавка каждой), поэтому отступы ровные.
-   min-width таблицы = сумма всех минимумов: если окно уже — горизонтальный скролл.
-   Порядок колонок: № · Дата · Реквизиты · Бот · Мерчант · Мерч.сумма ·
-                    Запр.сумма · Метод · Ордер ID · Chat ID */
+/* Вся таблица — ОДИН общий grid, поэтому ширины столбцов считаются один раз
+   для шапки и всех строк сразу → колонки шапки и тела всегда совпадают.
+   Строки (.htrow) — display:contents, их ячейки становятся прямыми детьми grid.
+   minmax(минимум, max-content): колонка не уже минимума из ТЗ и растёт под
+   полное содержимое (UUID виден целиком). Если суммарно шире окна — скролл. */
 .htable {
-  min-width: 1230px;
-  font-size: 13px;
-}
-
-.htrow {
   display: grid;
-  /* Минимум каждой колонки — пол из ТЗ (ниже не сжимается).
-     Остаток ширины делится между шестью динамическими колонками
-     ПРОПОРЦИОНАЛЬНО процентам из ТЗ — это fr-доли 32/22/18/9/9/10.
-     Колонки № · Дата · Метод · Chat ID не растут (по содержимому). */
+  width: max-content;
   grid-template-columns:
     minmax(110px, max-content)  /* № */
     minmax(160px, max-content)  /* Дата и время */
-    minmax(200px, 32fr)         /* Реквизиты — 32% остатка */
-    minmax(110px, 18fr)         /* Бот — 18% */
-    minmax(120px, 22fr)         /* Мерчант — 22% */
-    minmax(104px, 9fr)          /* Мерч.сумма — 9% */
-    minmax(104px, 9fr)          /* Запр.сумма — 9% */
+    minmax(200px, max-content)  /* Реквизиты */
+    minmax(110px, max-content)  /* Бот */
+    minmax(120px, max-content)  /* Мерчант */
+    minmax(104px, max-content)  /* Мерч.сумма */
+    minmax(104px, max-content)  /* Запр.сумма */
     minmax(92px,  max-content)  /* Метод */
-    minmax(120px, 10fr)         /* Ордер ID — 10% */
+    minmax(120px, max-content)  /* Ордер ID */
     minmax(110px, max-content); /* Chat ID */
-  border-bottom: 1px solid var(--border);
+  font-size: 13px;
 }
 
-.htable-head {
+/* Строки не создают свой grid — их ячейки вливаются в общий */
+.htrow { display: contents; }
+
+/* Шапка: липкая, ячейки подсвечены фоном */
+.htable-head .hcell {
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--tg-secondary-bg);
 }
 
-.htable-body .htrow:last-child { border-bottom: none; }
-.htable-body .htrow:hover { background: var(--row-hover); }
+/* Эффект ховера строки: подсветка всех ячеек этой строки */
+.htrow:hover .hcell { background: var(--row-hover); }
+.htable-head:hover .hcell { background: var(--tg-secondary-bg); }
 
 .hcell {
   padding: 11px 12px;
-  min-width: 0;                 /* чтобы grid-ячейка могла ужиматься, а текст — обрезаться */
   color: var(--tg-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;                          /* контент в одну строку */
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
 }
 
 .hcell.mono { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
 
-.hcell-right { text-align: right; }
-.hcell-center { text-align: center; }
-.hcell-left { text-align: left; }
+.hcell-right { justify-content: flex-end; text-align: right; }
+.hcell-center { justify-content: center; text-align: center; }
+.hcell-left { justify-content: flex-start; text-align: left; }
 
 .hhead {
   font-size: 11px;
@@ -402,6 +417,7 @@ body {
    ПАГИНАЦИЯ
    ========================================================= */
 .pagination {
+  align-self: stretch;        /* во всю ширину контейнера, а не по центру */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -437,6 +453,7 @@ body {
 @media (max-width: 720px) {
   .app { padding: 12px; }
   .page-header h1 { font-size: 18px; }
+  .results-area { width: 100%; }     /* на телефоне фильтры по ширине экрана, таблица скроллится сама */
   .filter-grid { grid-template-columns: 1fr; }
   .filter-actions { flex-direction: column-reverse; }
   .filter-actions .btn { width: 100%; }
