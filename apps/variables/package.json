@@ -1,5 +1,5 @@
 {
-  "name": "@webapps/bot-variables",
+  "name": "@webapps/variables",
   "private": true,
   "version": "1.0.0",
   "type": "module",

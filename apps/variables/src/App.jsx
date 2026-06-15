@@ -148,7 +148,7 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK === '1';
 const api = USE_MOCK ? mockApi : realApi;
 if (USE_MOCK) {
   // eslint-disable-next-line no-console
-  console.info('[bot-variables] Работает в MOCK-режиме (VITE_USE_MOCK=1)');
+  console.info('[variables] Работает в MOCK-режиме (VITE_USE_MOCK=1)');
 }
 
 // =============================================================
