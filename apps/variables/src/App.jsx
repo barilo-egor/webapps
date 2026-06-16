@@ -148,7 +148,7 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK === '1';
 const api = USE_MOCK ? mockApi : realApi;
 if (USE_MOCK) {
   // eslint-disable-next-line no-console
-  console.info('[bot-variables] Работает в MOCK-режиме (VITE_USE_MOCK=1)');
+  console.info('[variables] Работает в MOCK-режиме (VITE_USE_MOCK=1)');
 }
 
 // =============================================================
@@ -524,14 +524,21 @@ function RowCell({ type, savedValue, coords, onSave }) {
 
   return (
       <div className="cell-with-actions">
-        <input
-            type="text"
-            value={fs.currentValue}
-            onChange={handleInputChange}
-            inputMode={isString ? 'text' : inputModeForJavaType(javaType)}
-            disabled={busy}
-            className="input cell-input"
-        />
+        <div className="cell-input-wrap">
+          <input
+              type="text"
+              value={fs.currentValue}
+              onChange={handleInputChange}
+              inputMode={isString ? 'text' : inputModeForJavaType(javaType)}
+              disabled={busy}
+              className="input cell-input"
+          />
+          {isString && fs.currentValue && (
+              <div className="cell-tooltip" role="tooltip">
+                {fs.currentValue}
+              </div>
+          )}
+        </div>
         <FieldActions
             visible={fs.isModified}
             disabled={busy}
@@ -554,9 +561,8 @@ function RowField({ type, valuesMap, axes, onSaveCell }) {
   const isByFiat = config.hasFiatCurrency;
   const items = isByCrypto ? axes.cryptos : isByFiat ? axes.fiats : [];
   const labelMap = isByCrypto ? CRYPTO_LABEL : FIAT_LABEL;
-  // Если значения строковые (например, адреса кошельков) — делаем колонки
-  // широкими (320px) чтобы адреса помещались целиком. Если значения числовые
-  // (фиаты, крипты) — оставляем равномерное растяжение по контейнеру.
+  // Для строковых значений (адреса кошельков) применяем фикс. ширину ячейки.
+  // Для чисел (фиаты, крипты) — равномерное растяжение по ширине контейнера.
   const isStringValues = config.type === 'java.lang.String';
   const wrapperClass = isStringValues ? 'row-table row-table-strings' : 'row-table';
 
