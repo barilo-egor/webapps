@@ -323,24 +323,19 @@ export default function App() {
     loadContacts();
   }, [loadContacts]);
 
-  // Применяет новый порядок: оптимистично обновляет state и сохраняет на бэк
-  // (PATCH { pid, order }) для всех контактов, у которых order изменился.
+  // После дропа отправляем на бэк ТОЛЬКО перемещённый контакт с новым order.
+  // Порядок остальных контактов пересчитывает бэк сам (один запрос, без дедлоков).
   const applyReorder = useCallback((oldIndex, newIndex) => {
     if (oldIndex === newIndex || newIndex == null || oldIndex == null) return;
     setContacts((prev) => {
       const next = [...prev];
       const [moved] = next.splice(oldIndex, 1);
       next.splice(newIndex, 0, moved);
-
-      // переназначаем order = позиция (0-based) и сохраняем изменившиеся
-      const changed = [];
-      next.forEach((c, i) => {
-        if (c.order !== i) {
-          c.order = i;
-          changed.push(c);
-        }
-      });
-      Promise.all(changed.map((c) => contactsApi.setOrder(c))).catch((e) => {
+      // локально обновляем order по новым позициям (для мгновенного отображения)
+      next.forEach((c, i) => { c.order = i; });
+      // на бэк — только перемещённый контакт с его новым order
+      const movedContact = { ...moved, order: newIndex };
+      contactsApi.setOrder(movedContact).catch((e) => {
         alert('Не удалось сохранить порядок: ' + (e.message || ''));
         loadContacts(); // откат к серверному порядку
       });
