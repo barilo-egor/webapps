@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import './App.css';
 
 // =============================================================
@@ -70,6 +70,18 @@ const contactsApi = {
         body: JSON.stringify(data),
       }),
   remove: (pid) => apiFetch(`${API_BASE}/${pid}`, { method: 'DELETE' }),
+  // Сохранение нового порядка: PATCH полным контактом с обновлённым order
+  // (бэк ждёт { pid, label, url, order }).
+  setOrder: (contact) =>
+      apiFetch(API_BASE, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          pid: contact.pid,
+          label: contact.label,
+          url: contact.url,
+          order: contact.order,
+        }),
+      }),
 };
 
 // =============================================================
@@ -279,6 +291,12 @@ export default function App() {
   const [contactToDelete, setContactToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Ref на <tbody> для SortableJS и счётчик-версия списка:
+  // после дропа меняем версию → tbody перемонтируется и React перерисует
+  // строки из state (DOM, который подвигал Sortable, отбрасывается — нет рассинхрона).
+  const tbodyRef = useRef(null);
+  const [listVersion, setListVersion] = useState(0);
+
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     if (tg) {
@@ -292,6 +310,7 @@ export default function App() {
     setError(null);
     try {
       const data = await contactsApi.list();
+      // список уже приходит отсортированным по order с бэка — берём как есть
       setContacts(Array.isArray(data) ? data : []);
     } catch (e) {
       setError(e.message || 'Не удалось загрузить контакты');
@@ -303,6 +322,49 @@ export default function App() {
   useEffect(() => {
     loadContacts();
   }, [loadContacts]);
+
+  // Применяет новый порядок: оптимистично обновляет state и сохраняет на бэк
+  // (PATCH { pid, order }) для всех контактов, у которых order изменился.
+  const applyReorder = useCallback((oldIndex, newIndex) => {
+    if (oldIndex === newIndex || newIndex == null || oldIndex == null) return;
+    setContacts((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(oldIndex, 1);
+      next.splice(newIndex, 0, moved);
+
+      // переназначаем order = позиция (0-based) и сохраняем изменившиеся
+      const changed = [];
+      next.forEach((c, i) => {
+        if (c.order !== i) {
+          c.order = i;
+          changed.push(c);
+        }
+      });
+      Promise.all(changed.map((c) => contactsApi.setOrder(c))).catch((e) => {
+        alert('Не удалось сохранить порядок: ' + (e.message || ''));
+        loadContacts(); // откат к серверному порядку
+      });
+      return next;
+    });
+    // форсируем перемонтирование списка, чтобы DOM Sortable не конфликтовал с React
+    setListVersion((v) => v + 1);
+  }, [loadContacts]);
+
+  // Инициализация SortableJS на <tbody>. Перезапускается при смене данных/версии.
+  useEffect(() => {
+    const Sortable = window.Sortable;
+    const el = tbodyRef.current;
+    if (!Sortable || !el || contacts.length === 0) return;
+    const sortable = Sortable.create(el, {
+      handle: '.drag-handle',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: (evt) => applyReorder(evt.oldIndex, evt.newIndex),
+    });
+    return () => sortable.destroy();
+  }, [contacts, listVersion, applyReorder]);
 
   const handleAddContact = async ({ label, url }) => {
     setIsSubmitting(true);
@@ -410,6 +472,7 @@ export default function App() {
                   <table className="contacts-table">
                     <thead>
                     <tr>
+                      <th aria-label="Перетаскивание" className="col-drag"></th>
                       <th>Название</th>
                       <th>
                         <div className="th-with-hint">
@@ -422,7 +485,7 @@ export default function App() {
                       <th aria-label="Удаление" className="col-action"></th>
                     </tr>
                     </thead>
-                    <tbody>
+                    <tbody key={listVersion} ref={tbodyRef}>
                     {contacts.map((c) => (
                         <tr
                             key={c.pid}
@@ -430,6 +493,16 @@ export default function App() {
                             onDoubleClick={() => setContactToEdit(c)}
                             title="Двойной клик — редактировать"
                         >
+                          <td className="cell-drag">
+                            <span
+                                className="drag-handle"
+                                aria-label="Перетащить"
+                                title="Перетащите, чтобы изменить порядок"
+                                onDoubleClick={(e) => e.stopPropagation()}
+                            >
+                              <i className="fas fa-grip-vertical" aria-hidden="true"></i>
+                            </span>
+                          </td>
                           <td className="cell-name" title={c.label}>
                             {c.label}
                           </td>

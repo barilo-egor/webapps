@@ -243,6 +243,40 @@ body {
   padding-right: 14px !important;
 }
 
+/* =========================================================
+   DRAG-AND-DROP (переупорядочивание строк, SortableJS)
+   ========================================================= */
+.col-drag,
+.cell-drag {
+  width: 40px;
+  text-align: center;
+  padding-left: 14px !important;
+  padding-right: 0 !important;
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  color: var(--tg-hint);
+  cursor: grab;
+  border-radius: var(--radius-sm);
+  transition: color 0.12s ease, background 0.12s ease;
+  touch-action: none;            /* чтобы тащить пальцем, а не скроллить */
+}
+
+.drag-handle:hover { color: var(--tg-text); background: var(--row-hover); }
+.drag-handle:active { cursor: grabbing; }
+
+/* Состояния перетаскивания */
+.sortable-ghost { opacity: 0.4; }
+.sortable-chosen { background: var(--row-hover); }
+.sortable-drag {
+  background: var(--tg-section-bg);
+  box-shadow: var(--shadow-lg);
+}
+
 .btn-delete {
   background: transparent;
   border: none;
