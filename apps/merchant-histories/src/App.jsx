@@ -4,17 +4,34 @@ import './App.css';
 // =============================================================
 // API КЛИЕНТ
 // =============================================================
+// Подробное логирование (DevTools → Console). Выключить: DEBUG = false.
+const DEBUG = true;
+const dlog = (...a) => { if (DEBUG) console.log('%c[MH]', 'color:#2563eb;font-weight:bold', ...a); };
+const derr = (...a) => { if (DEBUG) console.error('%c[MH]', 'color:#dc2626;font-weight:bold', ...a); };
+
 const apiFetch = async (url, options = {}) => {
   const initData = window.Telegram?.WebApp?.initData || '';
-  const res = await fetch(url, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', 'X-TG-Init-Data': initData, ...(options.headers || {}) },
-  });
+  const m = options.method || 'GET';
+  const t0 = performance.now();
+  dlog(`→ ${m} ${url}`, options.body ? JSON.parse(options.body) : '');
+  let res;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', 'X-TG-Init-Data': initData, ...(options.headers || {}) },
+    });
+  } catch (e) {
+    derr(`✗ ${m} ${url} — сетевая ошибка/CORS за ${Math.round(performance.now() - t0)}мс:`, e.message);
+    throw e;
+  }
+  const ms = Math.round(performance.now() - t0);
   if (!res.ok) {
     let detail = '';
     try { detail = await res.text(); } catch {}
+    derr(`✗ ${m} ${url} → ${res.status} ${res.statusText} за ${ms}мс`, detail.slice(0, 300));
     throw new Error(`${res.status} ${res.statusText}${detail ? ' — ' + detail : ''}`);
   }
+  dlog(`✓ ${m} ${url} → ${res.status} за ${ms}мс`);
   const text = await res.text();
   let data = null;
   if (text) { try { data = JSON.parse(text); } catch { data = text; } }
@@ -25,13 +42,24 @@ const apiFetch = async (url, options = {}) => {
 // (Бэк должен отдавать Access-Control-Expose-Headers: X-Total-Count, иначе total = null.)
 const apiFetchWithTotal = async (url, options = {}) => {
   const initData = window.Telegram?.WebApp?.initData || '';
-  const res = await fetch(url, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', 'X-TG-Init-Data': initData, ...(options.headers || {}) },
-  });
+  const m = options.method || 'GET';
+  const t0 = performance.now();
+  dlog(`→ ${m} ${url}`, options.body ? JSON.parse(options.body) : '');
+  let res;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', 'X-TG-Init-Data': initData, ...(options.headers || {}) },
+    });
+  } catch (e) {
+    derr(`✗ ${m} ${url} — сетевая ошибка/CORS за ${Math.round(performance.now() - t0)}мс:`, e.message);
+    throw e;
+  }
+  const ms = Math.round(performance.now() - t0);
   if (!res.ok) {
     let detail = '';
     try { detail = await res.text(); } catch {}
+    derr(`✗ ${m} ${url} → ${res.status} ${res.statusText} за ${ms}мс`, detail.slice(0, 300));
     throw new Error(`${res.status} ${res.statusText}${detail ? ' — ' + detail : ''}`);
   }
   const text = await res.text();
@@ -39,6 +67,7 @@ const apiFetchWithTotal = async (url, options = {}) => {
   if (text) { try { data = JSON.parse(text); } catch { data = text; } }
   const totalRaw = res.headers.get('X-Total-Count');
   const total = totalRaw != null && totalRaw !== '' ? Number(totalRaw) : null;
+  dlog(`✓ ${m} ${url} → ${res.status} за ${ms}мс | X-Total-Count: ${totalRaw ?? 'нет (проверь Expose-Headers)'} | записей: ${Array.isArray(data) ? data.length : '?'}`);
   return { data, total };
 };
 
@@ -227,12 +256,19 @@ function MerchantSelect({ options, selected, onChange }) {
   );
 }
 
-function FilterPanel({ draft, setDraft, merchants, onSearch, onReset, busy }) {
+function FilterPanel({ draft, setDraft, merchants, onSearch, onReset, busy, onExpand }) {
   const [open, setOpen] = useState(false);
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
+  const toggle = () => {
+    setOpen((v) => {
+      const next = !v;
+      if (next && onExpand) onExpand(); // подгружаем справочник мерчантов при первом раскрытии
+      return next;
+    });
+  };
   return (
       <div className="section">
-        <button type="button" className="section-header" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <button type="button" className="section-header" onClick={toggle} aria-expanded={open}>
           <i className="fas fa-sliders-h section-icon" aria-hidden="true"></i>
           <span className="section-title">Фильтрация</span>
           <i className={`fas fa-chevron-right section-chevron ${open ? 'open' : ''}`} aria-hidden="true"></i>
@@ -427,24 +463,58 @@ export default function App() {
   useEffect(() => { busyRef.current = busy; }, [busy]);
   const [autoRefreshing, setAutoRefreshing] = useState(false);
 
-  const fetchPage = useCallback(async (filter, pageIndex) => {
-    const res = await api.list(buildBody(filter, pageIndex));
-    const data = Array.isArray(res?.data) ? res.data : [];
-    const totalCount = typeof res?.total === 'number' && !isNaN(res.total) ? res.total : null;
-    return { data, total: totalCount };
+  const [merchantsLoaded, setMerchantsLoaded] = useState(false);
+
+  // Запрос страницы с авто-повтором: при «плавающих» сбоях бэкенда тихо повторяем
+  // несколько раз с нарастающей паузой, прежде чем отдать ошибку наружу.
+  const fetchPage = useCallback(async (filter, pageIndex, retries = 3) => {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) dlog(`↻ повтор #${attempt} (страница ${pageIndex})`);
+        const res = await api.list(buildBody(filter, pageIndex));
+        const data = Array.isArray(res?.data) ? res.data : [];
+        const totalCount = typeof res?.total === 'number' && !isNaN(res.total) ? res.total : null;
+        if (attempt > 0) dlog(`✓ удалось с попытки #${attempt}`);
+        return { data, total: totalCount };
+      } catch (e) {
+        lastErr = e;
+        if (attempt < retries) {
+          const pause = 400 * (attempt + 1);
+          derr(`попытка #${attempt} не удалась, жду ${pause}мс и повторяю:`, e.message);
+          await new Promise((r) => setTimeout(r, pause));
+        } else {
+          derr(`все ${retries + 1} попытки не удались, сдаюсь:`, e.message);
+        }
+      }
+    }
+    throw lastErr;
   }, []);
 
+  // Ленивая загрузка справочника мерчантов — вызывается при первом раскрытии фильтра.
+  // Её ошибка НЕ роняет таблицу: просто список мерчантов останется пустым.
+  const loadMerchants = useCallback(async () => {
+    if (merchantsLoaded) return;
+    setMerchantsLoaded(true);
+    try {
+      const flt = await api.merchants();
+      setMerchants(Array.isArray(flt?.merchants) ? flt.merchants : []);
+    } catch {
+      setMerchantsLoaded(false); // дать возможность повторить при следующем открытии
+    }
+  }, [merchantsLoaded]);
+
+  // Первичная загрузка — ТОЛЬКО данные (один запрос на старте), с авто-повтором.
   useEffect(() => {
     let alive = true;
     (async () => {
       setLoading(true); setError(null);
       try {
-        const [res, flt] = await Promise.all([fetchPage(EMPTY_FILTER, 0), api.merchants()]);
+        const res = await fetchPage(EMPTY_FILTER, 0);
         if (!alive) return;
         setRows(res.data);
         setTotal(res.total);
         setHasNext(res.data.length === PAGE_SIZE);
-        setMerchants(Array.isArray(flt?.merchants) ? flt.merchants : []);
       } catch (e) {
         if (alive) setError(e.message || 'Не удалось загрузить историю');
       } finally {
@@ -512,7 +582,7 @@ export default function App() {
             )}
             {!loading && !error && (
                 <div className="results-area">
-                  <FilterPanel draft={draft} setDraft={setDraft} merchants={merchants} onSearch={handleSearch} onReset={handleReset} busy={busy} />
+                  <FilterPanel draft={draft} setDraft={setDraft} merchants={merchants} onSearch={handleSearch} onReset={handleReset} busy={busy} onExpand={loadMerchants} />
                   <div className="refresh-bar">
                     {autoRefreshing && (
                         <span className="auto-refresh">
