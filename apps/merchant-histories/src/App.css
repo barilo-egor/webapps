@@ -46,14 +46,30 @@ body {
 }
 
 .app {
-  min-height: 100vh;
+  height: var(--app-h, 100vh);   /* фактическая высота окна Telegram (--app-h), иначе 100vh */
+  min-height: var(--app-h, 100vh);
+  display: flex;
+  flex-direction: column;
   padding: 16px;
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 
 .container {
   max-width: 1800px;
+  width: 100%;
   margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* main и область результатов тянутся на высоту окна, чтобы таблица доходила до низа */
+.container > main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .mono {
@@ -118,6 +134,10 @@ body {
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .section {
@@ -310,10 +330,30 @@ body {
 /* =========================================================
    ТАБЛИЦА ИСТОРИИ
    ========================================================= */
+.refresh-bar {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.auto-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 .results {
   position: relative;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .results-mask {
@@ -331,13 +371,14 @@ body {
 .results-mask i { font-size: 28px; color: var(--accent); }
 
 .table-wrapper {
-  display: inline-block;       /* облегает таблицу по её ширине, а не на всю строку */
-  max-width: 100%;             /* но не шире контейнера — тогда включится скролл */
-  overflow-x: auto;
+  display: block;              /* заполняет ширину results (= ширине таблицы) */
+  max-width: 100%;             /* не шире контейнера — иначе горизонтальный скролл */
+  flex: 1 1 auto;             /* забирает всю оставшуюся высоту окна до низа */
+  min-height: 160px;
+  overflow: auto;              /* скролл и по горизонтали, и по вертикали внутри таблицы */
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--tg-section-bg);
-  vertical-align: top;
 }
 
 /* Вся таблица — ОДИН общий grid, поэтому ширины столбцов считаются один раз
