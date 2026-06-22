@@ -4,16 +4,11 @@ import './App.css';
 // =============================================================
 // API КЛИЕНТ
 // =============================================================
-// Подробное логирование (DevTools → Console). Выключить: DEBUG = false.
-const DEBUG = true;
-const dlog = (...a) => { if (DEBUG) console.log('%c[MH]', 'color:#2563eb;font-weight:bold', ...a); };
-const derr = (...a) => { if (DEBUG) console.error('%c[MH]', 'color:#dc2626;font-weight:bold', ...a); };
 
 const apiFetch = async (url, options = {}) => {
   const initData = window.Telegram?.WebApp?.initData || '';
   const m = options.method || 'GET';
   const t0 = performance.now();
-  dlog(`→ ${m} ${url}`, options.body ? JSON.parse(options.body) : '');
   let res;
   try {
     res = await fetch(url, {
@@ -21,17 +16,14 @@ const apiFetch = async (url, options = {}) => {
       headers: { 'Content-Type': 'application/json', 'X-TG-Init-Data': initData, ...(options.headers || {}) },
     });
   } catch (e) {
-    derr(`✗ ${m} ${url} — сетевая ошибка/CORS за ${Math.round(performance.now() - t0)}мс:`, e.message);
     throw e;
   }
   const ms = Math.round(performance.now() - t0);
   if (!res.ok) {
     let detail = '';
     try { detail = await res.text(); } catch {}
-    derr(`✗ ${m} ${url} → ${res.status} ${res.statusText} за ${ms}мс`, detail.slice(0, 300));
     throw new Error(`${res.status} ${res.statusText}${detail ? ' — ' + detail : ''}`);
   }
-  dlog(`✓ ${m} ${url} → ${res.status} за ${ms}мс`);
   const text = await res.text();
   let data = null;
   if (text) { try { data = JSON.parse(text); } catch { data = text; } }
@@ -44,7 +36,6 @@ const apiFetchWithTotal = async (url, options = {}) => {
   const initData = window.Telegram?.WebApp?.initData || '';
   const m = options.method || 'GET';
   const t0 = performance.now();
-  dlog(`→ ${m} ${url}`, options.body ? JSON.parse(options.body) : '');
   let res;
   try {
     res = await fetch(url, {
@@ -52,14 +43,12 @@ const apiFetchWithTotal = async (url, options = {}) => {
       headers: { 'Content-Type': 'application/json', 'X-TG-Init-Data': initData, ...(options.headers || {}) },
     });
   } catch (e) {
-    derr(`✗ ${m} ${url} — сетевая ошибка/CORS за ${Math.round(performance.now() - t0)}мс:`, e.message);
     throw e;
   }
   const ms = Math.round(performance.now() - t0);
   if (!res.ok) {
     let detail = '';
     try { detail = await res.text(); } catch {}
-    derr(`✗ ${m} ${url} → ${res.status} ${res.statusText} за ${ms}мс`, detail.slice(0, 300));
     throw new Error(`${res.status} ${res.statusText}${detail ? ' — ' + detail : ''}`);
   }
   const text = await res.text();
@@ -67,97 +56,27 @@ const apiFetchWithTotal = async (url, options = {}) => {
   if (text) { try { data = JSON.parse(text); } catch { data = text; } }
   const totalRaw = res.headers.get('X-Total-Count');
   const total = totalRaw != null && totalRaw !== '' ? Number(totalRaw) : null;
-  dlog(`✓ ${m} ${url} → ${res.status} за ${ms}мс | X-Total-Count: ${totalRaw ?? 'нет (проверь Expose-Headers)'} | записей: ${Array.isArray(data) ? data.length : '?'}`);
   return { data, total };
 };
 
 const realApi = {
   // POST /api/merchant-histories — список записей. Возвращает { data: [...], total }.
   list: (body) => apiFetchWithTotal('/api/merchant-histories', { method: 'POST', body: JSON.stringify(body) }),
-  // GET /api/filters/merchants — справочник мерчантов для фильтра.
-  merchants: () => apiFetch('/api/filters/merchants'),
+  // GET /api/constants/merchant — справочник мерчантов для фильтра.
+  merchants: () => apiFetch('/api/constants/merchant'),
 };
 
-// =============================================================
-// MOCK API
-// =============================================================
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-const MOCK_MERCHANTS = ['ALFA_TEAM','NOROS','YOLO','DEORA','LOTRIEN','EXTASY_PAY','BASE_51','ECLIPSE_GATE','SOUZ','MERIDIAN_PAY','ASGARD','GAMBIT','STORM_TRADE','PAY_LEE','CROCO_PAY'];
-const MOCK_METHODS = ['CARD','SBP','SBER_QR','TO_CARD'];
-const MOCK_BOTS = ['MainBot','PaymentBot','TradeBot','SupportBot','rce-dev3'];
-const MOCK_BANKS = ['СберБанк','Т-Банк','ВТБ','Озон Банк','Альфа-Банк'];
-
-function buildMockRecords() {
-  const rows = [];
-  let seed = 20260603;
-  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-  const hex = (n) => Array.from({ length: n }, () => Math.floor(rnd() * 16).toString(16)).join('');
-  const uuid = () => `${hex(8)}-${hex(4)}-${hex(4)}-${hex(4)}-${hex(12)}`;
-  const base = Date.parse('2026-06-03T15:22:28Z');
-  for (let i = 0; i < 95; i++) {
-    const method = MOCK_METHODS[Math.floor(rnd() * MOCK_METHODS.length)];
-    const hasDetails = method === 'CARD' || method === 'TO_CARD';
-    const reqAmount = Math.round(1000 + rnd() * 59000);
-    const hasMerchAmount = rnd() > 0.4;
-    rows.push({
-      dealId: 1780500142646 - Math.floor(rnd() * 9e8),
-      userId: 100000000 + Math.floor(rnd() * 899999999),
-      initiatorApp: MOCK_BOTS[Math.floor(rnd() * MOCK_BOTS.length)],
-      createdAt: new Date(base - i * (rnd() * 9 + 1) * 3600 * 1000).toISOString(),
-      merchant: MOCK_MERCHANTS[Math.floor(rnd() * MOCK_MERCHANTS.length)],
-      merchantOrderId: rnd() > 0.5 ? uuid() : String(100000 + Math.floor(rnd() * 900000)),
-      requestedAmount: reqAmount,
-      merchantAmount: hasMerchAmount ? Math.round(reqAmount + (rnd() - 0.5) * 4000) : null,
-      method,
-      details: hasDetails ? `${MOCK_BANKS[Math.floor(rnd() * MOCK_BANKS.length)]} ${String(2000000000000000 + Math.floor(rnd() * 8e15)).slice(0, 16)}` : null,
-    });
-  }
-  rows.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  return rows;
-}
-const MOCK_RECORDS = buildMockRecords();
-
-function mockFilterRows(rows, b) {
-  return rows.filter((r) => {
-    if (b.dealId != null && r.dealId !== b.dealId) return false;
-    if (b.userId != null && r.userId !== b.userId) return false;
-    if (b.details && !String(r.details ?? '').toLowerCase().includes(b.details.toLowerCase())) return false;
-    if (b.initiatorApp && !String(r.initiatorApp ?? '').toLowerCase().includes(b.initiatorApp.toLowerCase())) return false;
-    if (b.merchantOrderId && !String(r.merchantOrderId ?? '').toLowerCase().includes(b.merchantOrderId.toLowerCase())) return false;
-    if (Array.isArray(b.merchants) && b.merchants.length && !b.merchants.includes(r.merchant)) return false;
-    if (b.amount != null) {
-      const ok = (r.merchantAmount != null && Math.round(r.merchantAmount) === b.amount) ||
-          (r.requestedAmount != null && Math.round(r.requestedAmount) === b.amount);
-      if (!ok) return false;
-    }
-    if (b.createdFrom && r.createdAt < b.createdFrom) return false;
-    if (b.createdTo && r.createdAt > b.createdTo) return false;
-    return true;
-  });
-}
-
-const mockApi = {
-  list: async (body) => {
-    await delay(160);
-    const filtered = mockFilterRows(JSON.parse(JSON.stringify(MOCK_RECORDS)), body);
-    const page = body.page ?? 0, size = body.size ?? 30;
-    return { data: filtered.slice(page * size, page * size + size), total: filtered.length };
-  },
-  merchants: async () => { await delay(100); return { merchants: [...MOCK_MERCHANTS] }; },
-};
-
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === '1';
-const api = USE_MOCK ? mockApi : realApi;
-if (USE_MOCK) console.info('[merchant-history] Работает в MOCK-режиме (VITE_USE_MOCK=1)');
+const api = realApi;
 
 // =============================================================
 // ОТОБРАЖАЕМЫЕ ИМЕНА
 // =============================================================
+// Карта код→displayName заполняется из справочника /api/constants/merchant.
 const MERCHANT_LABEL = {};
 function merchantLabel(code) {
   if (!code) return '';
-  if (MERCHANT_LABEL[code]) return MERCHANT_LABEL[code];
-  return code.toLowerCase().split('_').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('');
+  if (MERCHANT_LABEL[code]) return MERCHANT_LABEL[code];               // displayName с бэка
+  return code.toLowerCase().split('_').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(''); // фолбэк
 }
 const METHOD_LABEL = { SBP: 'СБП', CARD: 'Карта', SBER_QR: 'Сбер QR', TO_CARD: 'На карту' };
 function methodLabel(code) {
@@ -232,8 +151,11 @@ function MerchantSelect({ options, selected, onChange }) {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
-  const toggle = (code) => onChange(selected.includes(code) ? selected.filter((c) => c !== code) : [...selected, code]);
-  const display = selected.length === 0 ? 'Все' : selected.map(merchantLabel).join(', ');
+  // options: [{ name, displayName }]; selected: [name, ...] — на бэк уходят name (коды)
+  const toggle = (name) => onChange(selected.includes(name) ? selected.filter((c) => c !== name) : [...selected, name]);
+  const display = selected.length === 0
+      ? 'Все'
+      : selected.map((name) => merchantLabel(name)).join(', '); // показываем displayName
   return (
       <div className="ms" ref={ref}>
         <button type="button" className={`ms-control ${selected.length ? 'ms-control-filled' : ''}`} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
@@ -242,11 +164,11 @@ function MerchantSelect({ options, selected, onChange }) {
         </button>
         {open && (
             <div className="ms-dropdown" role="listbox">
-              {options.map((code) => {
-                const isSel = selected.includes(code);
+              {options.map((m) => {
+                const isSel = selected.includes(m.name);
                 return (
-                    <div key={code} className={`ms-option ${isSel ? 'ms-option-selected' : ''}`} role="option" aria-selected={isSel} onClick={() => toggle(code)}>
-                      {merchantLabel(code)}
+                    <div key={m.name} className={`ms-option ${isSel ? 'ms-option-selected' : ''}`} role="option" aria-selected={isSel} onClick={() => toggle(m.name)}>
+                      {m.displayName || merchantLabel(m.name)}
                     </div>
                 );
               })}
@@ -471,37 +393,48 @@ export default function App() {
     let lastErr;
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        if (attempt > 0) dlog(`↻ повтор #${attempt} (страница ${pageIndex})`);
         const res = await api.list(buildBody(filter, pageIndex));
         const data = Array.isArray(res?.data) ? res.data : [];
         const totalCount = typeof res?.total === 'number' && !isNaN(res.total) ? res.total : null;
-        if (attempt > 0) dlog(`✓ удалось с попытки #${attempt}`);
         return { data, total: totalCount };
       } catch (e) {
         lastErr = e;
         if (attempt < retries) {
           const pause = 400 * (attempt + 1);
-          derr(`попытка #${attempt} не удалась, жду ${pause}мс и повторяю:`, e.message);
           await new Promise((r) => setTimeout(r, pause));
-        } else {
-          derr(`все ${retries + 1} попытки не удались, сдаюсь:`, e.message);
         }
       }
     }
     throw lastErr;
   }, []);
 
-  // Ленивая загрузка справочника мерчантов — вызывается при первом раскрытии фильтра.
-  // Её ошибка НЕ роняет таблицу: просто список мерчантов останется пустым.
+  // Ленивая загрузка справочника мерчантов — при первом раскрытии фильтра, с авто-повтором.
+  // Ошибка НЕ роняет таблицу. Если список пуст/упал — попробуем снова при следующем открытии.
   const loadMerchants = useCallback(async () => {
     if (merchantsLoaded) return;
     setMerchantsLoaded(true);
-    try {
-      const flt = await api.merchants();
-      setMerchants(Array.isArray(flt?.merchants) ? flt.merchants : []);
-    } catch {
-      setMerchantsLoaded(false); // дать возможность повторить при следующем открытии
+    for (let attempt = 0; attempt <= 3; attempt++) {
+      try {
+        const flt = await api.merchants();
+        // ожидаем [{ name, displayName }]; поддержим и {merchants:[...]}/{data:[...]} на всякий
+        const raw = Array.isArray(flt) ? flt
+            : Array.isArray(flt?.merchants) ? flt.merchants
+                : Array.isArray(flt?.data) ? flt.data
+                    : [];
+        // нормализуем: строка → {name, displayName=сгенерированное}; объект → как есть
+        const list = raw.map((m) =>
+            typeof m === 'string'
+                ? { name: m, displayName: merchantLabel(m) }
+                : { name: m.name, displayName: m.displayName || merchantLabel(m.name) }
+        ).filter((m) => m.name);
+        // наполняем карту код→displayName, чтобы колонка «Мерчант» в таблице тоже показывала displayName
+        list.forEach((m) => { MERCHANT_LABEL[m.name] = m.displayName; });
+        if (list.length) { setMerchants(list); return; }
+        // пустой ответ — пробуем ещё раз
+      } catch {}
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
     }
+    setMerchantsLoaded(false); // дать шанс повторить при следующем раскрытии
   }, [merchantsLoaded]);
 
   // Первичная загрузка — ТОЛЬКО данные (один запрос на старте), с авто-повтором.
