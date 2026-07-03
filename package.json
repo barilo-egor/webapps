@@ -15,7 +15,9 @@
     "dev:payment-type-categories": "npm run dev -w @webapps/payment-type-categories",
     "build:payment-type-categories": "npm run build -w @webapps/payment-type-categories",
     "dev:variables": "npm run dev -w @webapps/variables",
-    "build:variables": "npm run build -w @webapps/variables"
+    "build:variables": "npm run build -w @webapps/variables",
+    "dev:ad-links": "npm run dev -w @webapps/ad-links",
+    "build:ad-links": "npm run build -w @webapps/ad-links"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
