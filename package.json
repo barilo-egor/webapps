@@ -15,7 +15,11 @@
     "dev:payment-type-categories": "npm run dev -w @webapps/payment-type-categories",
     "build:payment-type-categories": "npm run build -w @webapps/payment-type-categories",
     "dev:variables": "npm run dev -w @webapps/variables",
-    "build:variables": "npm run build -w @webapps/variables"
+    "build:variables": "npm run build -w @webapps/variables",
+    "dev:merchant-histories": "npm run dev -w @webapps/merchant-histories",
+    "build:merchant-histories": "npm run build -w @webapps/merchant-histories",
+    "dev:withdrawal-history": "npm run dev -w @webapps/withdrawal-history",
+    "build:withdrawal-history": "npm run build -w @webapps/withdrawal-history"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
