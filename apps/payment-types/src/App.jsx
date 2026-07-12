@@ -15,10 +15,11 @@ import './App.css';
 //          <- { name, dealType, fiatCurrency, minSum,
 //              requisiteAdditionalText, isOn }
 //          -> созданный объект
-//   PATCH  /api/payment-types
+//   PUT    /api/payment-types
 //          <- { pid, name, dealType, fiatCurrency, minSum,
 //              requisiteAdditionalText, discounts: [...] }
 //          -> обновлённый объект
+//          (ранее было PATCH; бэк перевёл обновление на PUT)
 //   DELETE /api/payment-types/{pid}                          -> 200 / 204
 //   PATCH  /api/payment-types/{pid}/activation?isOn=true     -> 200
 // =============================================================
@@ -56,7 +57,7 @@ const realApi = {
   create: (data) =>
       apiFetch(API_BASE, { method: 'POST', body: JSON.stringify(data) }),
   update: (data) =>
-      apiFetch(API_BASE, { method: 'PATCH', body: JSON.stringify(data) }),
+      apiFetch(API_BASE, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (pid) => apiFetch(`${API_BASE}/${pid}`, { method: 'DELETE' }),
   toggleActive: (pid, isOn) =>
       apiFetch(`${API_BASE}/${pid}/activation?isOn=${isOn}`, { method: 'PATCH' }),
@@ -65,119 +66,8 @@ const realApi = {
   listFiats: () => apiFetch('/api/constants/fiat'),
 };
 
-// =============================================================
-// MOCK API (для локальной разработки без бэкенда)
-// =============================================================
-// Включается через VITE_USE_MOCK=1 в .env.local. Хранит данные в памяти
-// (исчезают при перезагрузке страницы) и имитирует задержку сети.
-// =============================================================
-let mockData = [
-  {
-    pid: 1,
-    name: 'Карта',
-    dealType: 'SELL',
-    fiatCurrency: 'RUB',
-    minSum: 500,
-    requisiteAdditionalText: '',
-    isOn: true,
-    discounts: [],
-  },
-  {
-    pid: 2,
-    name: 'СБП',
-    dealType: 'SELL',
-    fiatCurrency: 'RUB',
-    minSum: 15000,
-    requisiteAdditionalText: '',
-    isOn: false,
-    discounts: [],
-  },
-  {
-    pid: 3,
-    name: 'Транс',
-    dealType: 'SELL',
-    fiatCurrency: 'BYN',
-    minSum: 1000,
-    requisiteAdditionalText: 'Минимум 1000 BYN',
-    isOn: true,
-    discounts: [{ percent: 5, maxAmount: 50 }],
-  },
-  {
-    pid: 4,
-    name: 'Карта',
-    dealType: 'BUY',
-    fiatCurrency: 'RUB',
-    minSum: 2000,
-    requisiteAdditionalText: '',
-    isOn: true,
-    discounts: [],
-  },
-  {
-    pid: 5,
-    name: 'СБП',
-    dealType: 'BUY',
-    fiatCurrency: 'BYN',
-    minSum: 50000,
-    requisiteAdditionalText: '',
-    isOn: false,
-    discounts: [],
-  },
-];
-let mockPidCounter = 100;
+const paymentTypesApi = realApi;
 
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-
-const mockApi = {
-  list: async () => {
-    await delay(300);
-    return [...mockData];
-  },
-  create: async (data) => {
-    await delay(200);
-    const created = { ...data, pid: mockPidCounter++, discounts: [] };
-    mockData.push(created);
-    return created;
-  },
-  update: async (data) => {
-    await delay(200);
-    const idx = mockData.findIndex((it) => it.pid === data.pid);
-    if (idx === -1) throw new Error('Not found');
-    mockData[idx] = { ...mockData[idx], ...data };
-    return mockData[idx];
-  },
-  remove: async (pid) => {
-    await delay(200);
-    mockData = mockData.filter((it) => it.pid !== pid);
-    return null;
-  },
-  toggleActive: async (pid, isOn) => {
-    await delay(150);
-    const idx = mockData.findIndex((it) => it.pid === pid);
-    if (idx === -1) throw new Error('Not found');
-    mockData[idx] = { ...mockData[idx], isOn };
-    return mockData[idx];
-  },
-  listFiats: async () => {
-    await delay(100);
-    // Возвращаем тот же формат что и реальный бэк: [{name, displayName}, ...]
-    return [
-      { name: 'RUB', displayName: 'Рус. руб' },
-      { name: 'BYN', displayName: 'Бел. руб' },
-      { name: 'USD', displayName: 'Доллар США' },
-      { name: 'EUR', displayName: 'Евро' },
-      { name: 'KZT', displayName: 'Тенге' },
-      { name: 'UAH', displayName: 'Гривна' },
-    ];
-  },
-};
-
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === '1';
-const paymentTypesApi = USE_MOCK ? mockApi : realApi;
-
-if (USE_MOCK) {
-  // eslint-disable-next-line no-console
-  console.info('[payment-types] Работает в MOCK-режиме (VITE_USE_MOCK=1)');
-}
 
 // =============================================================
 // СПРАВОЧНИКИ
