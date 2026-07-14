@@ -19,7 +19,9 @@
     "dev:merchant-histories": "npm run dev -w @webapps/merchant-histories",
     "build:merchant-histories": "npm run build -w @webapps/merchant-histories",
     "dev:withdrawal-history": "npm run dev -w @webapps/withdrawal-history",
-    "build:withdrawal-history": "npm run build -w @webapps/withdrawal-history"
+    "build:withdrawal-history": "npm run build -w @webapps/withdrawal-history",
+    "dev:users": "npm run dev -w @webapps/users",
+    "build:users": "npm run build -w @webapps/users"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
