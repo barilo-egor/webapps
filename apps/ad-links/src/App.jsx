@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import './App.css';
+import UserProfile from '../../shared/UserProfile.jsx';
 
 // =============================================================
 // API КЛИЕНТ
@@ -352,6 +353,7 @@ function StatsScreen({ link, bot, onBack, showToast }) {
   const [dayActivity, setDayActivity] = useState('1');
   const [byDealBusy, setByDealBusy] = useState(false);
   const [byActBusy, setByActBusy] = useState(false);
+  const [profileChatId, setProfileChatId] = useState(null); // открытый профиль пользователя
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -400,8 +402,8 @@ function StatsScreen({ link, bot, onBack, showToast }) {
   };
 
   const openUser = (u) => {
-    // TODO: переход в веб-апп «Пользователи» (профиль по chatId) — апп пока не готов.
-    showToast('success', `Профиль ${u.chatId} — откроется в приложении «Пользователи» (в разработке)`);
+    // Открываем общий компонент профиля (тот же, что в аппе «Пользователи»).
+    setProfileChatId(u.chatId);
   };
 
   return (
@@ -495,6 +497,10 @@ function StatsScreen({ link, bot, onBack, showToast }) {
                 </StatGroup>
               </div>
             </div>
+        )}
+
+        {profileChatId != null && (
+            <UserProfile chatId={profileChatId} onClose={() => setProfileChatId(null)} />
         )}
       </div>
   );
