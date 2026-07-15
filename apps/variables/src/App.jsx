@@ -38,118 +38,7 @@ const realApi = {
       apiFetch('/api/variables?isGlobalSave=true', { method: 'POST', body: JSON.stringify(payload) }),
 };
 
-// =============================================================
-// MOCK API (для локальной разработки без бэкенда)
-// =============================================================
-
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-
-const mockTypes = [
-  { id: 'USD_COURSE', displayName: 'Курс доллара', config: { hasDealType: true, hasFiatCurrency: true, hasCryptoCurrency: true, type: 'java.math.BigDecimal' } },
-  { id: 'USDT_COURSE', displayName: 'Курс USDT', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.math.BigDecimal' } },
-  { id: 'USD_RUB_COURSE', displayName: 'Курс рос.рубля к доллару', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.math.BigDecimal' } },
-  { id: 'BYN_RUB_COURSE', displayName: 'Курс BYN к RUB', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.math.BigDecimal' } },
-  { id: 'RUB_BYN_COURSE', displayName: 'Курс RUB к BYN', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.math.BigDecimal' } },
-  { id: 'FIX', displayName: 'Фикс рублей', config: { hasDealType: true, hasFiatCurrency: true, hasCryptoCurrency: true, type: 'java.lang.Integer' } },
-  { id: 'FIX_COMMISSION', displayName: 'Фикс комиссия', config: { hasDealType: true, hasFiatCurrency: true, hasCryptoCurrency: true, type: 'java.lang.Integer' } },
-  { id: 'FIX_COMMISSION_VIP', displayName: 'Фикс комиссия для вип', config: { hasDealType: true, hasFiatCurrency: true, hasCryptoCurrency: true, type: 'java.lang.Integer' } },
-  { id: 'COMMISSION', displayName: 'Комиссия', config: { hasDealType: true, hasFiatCurrency: true, hasCryptoCurrency: true, type: 'java.math.BigDecimal' } },
-  { id: 'TRANSACTION_COMMISSION', displayName: 'Транз.комиссия', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: true, type: 'java.math.BigDecimal' } },
-  { id: 'MIN_SUM', displayName: 'Мин.сумма сделки', config: { hasDealType: true, hasFiatCurrency: false, hasCryptoCurrency: true, type: 'java.math.BigDecimal' } },
-  { id: 'REFERRAL_MIN_SUM', displayName: 'Мин.сумма вывода', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'DEAL_MAX_ENTERED_SUM', displayName: 'Максимальная сумма в крипте', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: true, type: 'java.math.BigDecimal' } },
-  { id: 'MAX_SUM', displayName: 'Максимальная сумма обмена', config: { hasDealType: false, hasFiatCurrency: true, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'PERMISSIBLE_EXCHANGE_RATE_DIFFERENCE', displayName: 'Допустимая разница курса', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: true, type: 'java.math.BigDecimal' } },
-  { id: 'MAX_AUTO_CONFIRM_AMOUNT', displayName: 'Макс.сумма автоподтверждения', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'REFERRAL_PERCENT', displayName: 'Процент рефералов', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.math.BigDecimal' } },
-  { id: 'PROBABILITY', displayName: 'Шанс лотереи', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.math.BigDecimal' } },
-  { id: 'PROMO_CODE_DISCOUNT', displayName: 'Скидка от промокода', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.math.BigDecimal' } },
-  { id: 'PROMO_CODE_NAME', displayName: 'Название промокода', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.String' } },
-  { id: 'REF_BALANCE_PROMO_CODE_ACTIVE_TIME', displayName: 'Кол-во часов активности промокода', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'DEAL_RANK_DISCOUNT_ENABLE', displayName: 'Ранговая скидка для всех', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Boolean' } },
-  { id: 'MIN_AMOUNT_FOR_REFERRAL_DISCOUNT', displayName: 'Мин.сумма сделки для реф.скидки', config: { hasDealType: false, hasFiatCurrency: true, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'DEALS_COUNT_CAPTCHA_CHECK', displayName: 'Макс.кол-во сделок для капчи', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'DEALS_CAPTCHA_OPTIONS_COUNT', displayName: 'Кол-во вариантов ответа для капчи сделок', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'DEALS_CAPTCHA_TRY_COUNT', displayName: 'Кол-во попыток ответа для капчи сделок', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'MAX_ABS_DETAILS_COUNT', displayName: 'Макс.кол-во реквизитов ABS', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'DEALS_COUNT_ANTI_BLOCK_DETAILS', displayName: 'Кол-во сделок для ABDS', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'CHANNEL_CHAT_ID', displayName: 'Айди канала', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Long' } },
-  { id: 'REVIEW_PRISE', displayName: 'Вознаграждение', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'REVIEW_PUBLISH_MINUTES_INTERVAL', displayName: 'Промежуток в минутах публикации отзывов', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-  { id: 'WALLET', displayName: 'Кошелек крипты', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: true, type: 'java.lang.String' } },
-  { id: 'IS_REGISTRATION_OPENED', displayName: 'Доступ к регистрации', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Boolean' } },
-  { id: 'OPERATOR_LINK', displayName: 'Ссылка на оператора', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.String' } },
-  { id: 'DEAL_ACTIVE_TIME', displayName: 'Время активности заявки', config: { hasDealType: false, hasFiatCurrency: false, hasCryptoCurrency: false, type: 'java.lang.Integer' } },
-];
-
-// Базовый набор значений для mock
-let mockValues = [
-  { variableType: 'USDT_COURSE', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: '0.9' },
-  { variableType: 'USD_RUB_COURSE', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: '92.5' },
-  { variableType: 'BYN_RUB_COURSE', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: '31.2' },
-  { variableType: 'RUB_BYN_COURSE', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: '0.032' },
-  { variableType: 'USD_COURSE', fiatCurrency: 'RUB', dealType: 'BUY', cryptoCurrency: 'BITCOIN', value: '98' },
-  { variableType: 'USD_COURSE', fiatCurrency: 'RUB', dealType: 'SELL', cryptoCurrency: 'BITCOIN', value: '88' },
-  { variableType: 'USD_COURSE', fiatCurrency: 'BYN', dealType: 'BUY', cryptoCurrency: 'USDT', value: '3.67' },
-  { variableType: 'TRANSACTION_COMMISSION', fiatCurrency: null, dealType: null, cryptoCurrency: 'USDT', value: '1' },
-  { variableType: 'TRANSACTION_COMMISSION', fiatCurrency: null, dealType: null, cryptoCurrency: 'BITCOIN', value: '0' },
-  { variableType: 'WALLET', fiatCurrency: null, dealType: null, cryptoCurrency: 'BITCOIN', value: 'bc1qxr4whk3dgzx0yaclvl0ca2f2v4w6cglhrfyfmy' },
-  { variableType: 'WALLET', fiatCurrency: null, dealType: null, cryptoCurrency: 'USDT', value: 'TAuTEdXDwu2j8z6zHoHuo23UhBXexfFYEX' },
-  { variableType: 'MAX_SUM', fiatCurrency: 'RUB', dealType: null, cryptoCurrency: null, value: '400000' },
-  { variableType: 'MAX_SUM', fiatCurrency: 'BYN', dealType: null, cryptoCurrency: null, value: '8000' },
-  { variableType: 'PROMO_CODE_DISCOUNT', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: '25' },
-  { variableType: 'PROMO_CODE_NAME', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: 'NEWUSER30' },
-  { variableType: 'REF_BALANCE_PROMO_CODE_ACTIVE_TIME', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: '72' },
-  { variableType: 'IS_REGISTRATION_OPENED', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: 'true' },
-  { variableType: 'DEAL_RANK_DISCOUNT_ENABLE', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: 'false' },
-  { variableType: 'OPERATOR_LINK', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: 'https://t.me/BULBA_BTC' },
-  { variableType: 'DEAL_ACTIVE_TIME', fiatCurrency: null, dealType: null, cryptoCurrency: null, value: '25' },
-];
-
-const findValueIdx = (payload) =>
-    mockValues.findIndex(
-        (v) =>
-            v.variableType === payload.variableType &&
-            (v.fiatCurrency ?? null) === (payload.fiatCurrency ?? null) &&
-            (v.dealType ?? null) === (payload.dealType ?? null) &&
-            (v.cryptoCurrency ?? null) === (payload.cryptoCurrency ?? null)
-    );
-
-const mockApi = {
-  listTypes: async () => {
-    await delay(150);
-    return JSON.parse(JSON.stringify(mockTypes));
-  },
-  listValues: async () => {
-    await delay(150);
-    return JSON.parse(JSON.stringify(mockValues));
-  },
-  save: async (payload) => {
-    await delay(200);
-    const idx = findValueIdx(payload);
-    const record = {
-      variableType: payload.variableType,
-      fiatCurrency: payload.fiatCurrency ?? null,
-      dealType: payload.dealType ?? null,
-      cryptoCurrency: payload.cryptoCurrency ?? null,
-      value: String(payload.value),
-    };
-    if (idx === -1) mockValues.push(record);
-    else mockValues[idx] = record;
-    return record;
-  },
-  saveGlobal: async (payload) => {
-    // В mock-режиме различия нет — то же что обычное сохранение
-    return mockApi.save(payload);
-  },
-};
-
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === '1';
-const api = USE_MOCK ? mockApi : realApi;
-if (USE_MOCK) {
-  // eslint-disable-next-line no-console
-  console.info('[variables] Работает в MOCK-режиме (VITE_USE_MOCK=1)');
-}
+const api = realApi;
 
 // =============================================================
 // СТРУКТУРА БЛОКОВ И ПОДБЛОКОВ
@@ -174,6 +63,7 @@ const BLOCKS = [
   { id: 'captcha', label: 'Капча', icon: 'fas fa-shield-alt' },
   { id: 'abs', label: 'ABS', icon: 'fas fa-address-card' },
   { id: 'reviews', label: 'Отзывы', icon: 'fas fa-star' },
+  { id: 'bonus', label: 'Бонус', icon: 'fas fa-trophy' },
   { id: 'other', label: 'Прочее', icon: 'fas fa-cogs' },
 ];
 
@@ -218,6 +108,14 @@ const VAR_TO_BLOCK = {
   CHANNEL_CHAT_ID: ['reviews'],
   REVIEW_PRISE: ['reviews'],
   REVIEW_PUBLISH_MINUTES_INTERVAL: ['reviews'],
+  // Бонус
+  BONUS_ENABLED: ['bonus'],
+  BONUS_DEALS_THRESHOLD: ['bonus'],
+  BONUS_DISCOUNT_PERCENT: ['bonus'],
+  BONUS_PROGRESS_TEXT: ['bonus'],
+  BONUS_ACTIVATED_TEXT: ['bonus'],
+  BONUS_EMOJI_DONE: ['bonus'],
+  BONUS_EMOJI_LEFT: ['bonus'],
   // Прочее
   WALLET: ['other'],
   IS_REGISTRATION_OPENED: ['other'],
