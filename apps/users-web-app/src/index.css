@@ -219,3 +219,25 @@ table.ref tbody tr:last-child td { border-bottom: none; }
 
 .comment-actions { display: flex; gap: 8px; margin-top: 8px; }
 .msg-preview { background: var(--tg-bg); border: 1px solid var(--tg-border); border-radius: 9px; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; margin: 10px 0; max-height: 200px; overflow-y: auto; }
+
+/* ---- Выравнивание колонок списка пользователей ---- */
+table.grid th.col-id, table.grid td.col-id { width: 130px; min-width: 130px; text-align: left; }
+table.grid th.col-user, table.grid td.col-user { width: 150px; min-width: 150px; text-align: left; }
+table.grid th.col-deals, table.grid td.col-deals { width: 110px; min-width: 110px; text-align: right; }
+table.grid td.mono {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  letter-spacing: .2px;
+}
+
+/* ---- Сортируемый заголовок ---- */
+table.grid th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+table.grid th.sortable:hover { color: var(--tg-text); }
+table.grid th.sortable.active { color: var(--tg-button); }
+.sort-ico { font-size: 11px; margin-left: 2px; }
+.sort-ico.dim { opacity: .35; }
+
+/* ---- Диапазон «от — до» в фильтре ---- */
+.range-row { display: flex; align-items: center; gap: 8px; }
+.range-row input { flex: 1; min-width: 0; }
+.range-dash { color: var(--tg-hint); flex: none; }
