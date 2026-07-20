@@ -63,7 +63,6 @@ const BLOCKS = [
   { id: 'captcha', label: 'Капча', icon: 'fas fa-shield-alt' },
   { id: 'abs', label: 'ABS', icon: 'fas fa-address-card' },
   { id: 'reviews', label: 'Отзывы', icon: 'fas fa-star' },
-  { id: 'bonus', label: 'Бонус', icon: 'fas fa-trophy' },
   { id: 'other', label: 'Прочее', icon: 'fas fa-cogs' },
 ];
 
@@ -108,14 +107,6 @@ const VAR_TO_BLOCK = {
   CHANNEL_CHAT_ID: ['reviews'],
   REVIEW_PRISE: ['reviews'],
   REVIEW_PUBLISH_MINUTES_INTERVAL: ['reviews'],
-  // Бонус
-  BONUS_ENABLED: ['bonus'],
-  BONUS_DEALS_THRESHOLD: ['bonus'],
-  BONUS_DISCOUNT_PERCENT: ['bonus'],
-  BONUS_PROGRESS_TEXT: ['bonus'],
-  BONUS_ACTIVATED_TEXT: ['bonus'],
-  BONUS_EMOJI_DONE: ['bonus'],
-  BONUS_EMOJI_LEFT: ['bonus'],
   // Прочее
   WALLET: ['other'],
   IS_REGISTRATION_OPENED: ['other'],
@@ -788,6 +779,9 @@ export default function App() {
           : { __direct: [] };
     }
     for (const t of types) {
+      // Бонусные переменные управляются отдельным веб-аппом «Бонусная программа»
+      // и в этом аппе не показываются (иначе попали бы в блок «Прочее»).
+      if (String(t.id).startsWith('BONUS_')) continue;
       const mapping = VAR_TO_BLOCK[t.id];
       if (mapping) {
         const [blockId, subBlockId] = mapping;
