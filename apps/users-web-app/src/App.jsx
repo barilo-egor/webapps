@@ -1,7 +1,43 @@
 import { useEffect, useMemo, useState } from 'react';
 import UserProfile from '../../shared/UserProfile.jsx';
 
+/* ============================================================
+   Пользователи — веб-апп админки. ПРОД-версия (без mock).
+
+   Роль текущего оператора берём с бэка: GET /api/users/role/{myChatId},
+   где myChatId — из Telegram initData. От неё зависит доступ к действиям.
+   Правами всё равно рулит и бэк (проверяет initiatorId на изменяющих запросах).
+   ============================================================ */
+
+
 const PAGE_SIZE = 50;
+
+/* ---- Поиск по количеству обменов (контракт бэка) ----
+   dealsCount          — значение (для RANGE это «от»)
+   maxDealsCount       — «до» (только для RANGE)
+   comparisonOperator  — EQUAL | GREATER_THAN | LESS_THAN | RANGE
+   Фильтрация и сортировка выполняются НА СЕРВЕРЕ: на клиенте лежит
+   только текущая страница (50 записей), локально фильтровать нельзя. */
+const CMP = {
+  eq: 'EQUAL',
+  gt: 'GREATER_THAN',
+  lt: 'LESS_THAN',
+  range: 'RANGE',
+};
+
+/* Сортировка (контракт бэка, Spring-стиль): ?sort=<поле>,<asc|desc>
+   Пример рабочего запроса: /users?...&sort=dealsCount,asc
+   Поля берём из ответа API — они же колонки таблицы. */
+const SORTABLE = {
+  chatId: 'chatId',
+  username: 'username',
+  dealsCount: 'dealsCount',
+  // В JSON поле зовётся lastActivityDate, но сортировка идёт по имени
+  // поля сущности — lastActivity (иначе бэк отдаёт 500).
+  lastActivity: 'lastActivity',
+  isBanned: 'isBanned',
+  isAutoConfirmOn: 'isAutoConfirmOn',
+};
 
 // chatId текущего оператора (кто открыл апп) — из Telegram initData.
 const myChatId = () => window.Telegram?.WebApp?.initDataUnsafe?.user?.id ?? null;
@@ -34,13 +70,32 @@ const headers = () => ({
 });
 
 const realApi = {
-  async searchUsers(f, page) {
+  async searchUsers(f, page, sort) {
     const q = new URLSearchParams();
     if (f.chatId) q.set('chatId', f.chatId);
     if (f.username) q.set('username', f.username);
     if (f.isBanned !== '') q.set('isBanned', f.isBanned);
     if (f.isAutoConfirmOn !== '') q.set('isAutoConfirmOn', f.isAutoConfirmOn);
     if (f.activityDays) q.set('activityDays', f.activityDays);
+
+    // Поиск по количеству обменов: comparisonOperator + dealsCount [+ maxDealsCount]
+    const dm = f.dealsMode;
+    if (dm === 'range') {
+      if (f.dealsFrom !== '' && f.dealsTo !== '') {
+        q.set('comparisonOperator', CMP.range);
+        q.set('dealsCount', f.dealsFrom);
+        q.set('maxDealsCount', f.dealsTo);
+      }
+    } else if (dm && f.dealsValue !== '') {
+      q.set('comparisonOperator', CMP[dm]);
+      q.set('dealsCount', f.dealsValue);
+    }
+
+    // Сортировка: ?sort=<поле>,<asc|desc>
+    if (sort && sort.field && sort.dir) {
+      q.set('sort', `${sort.field},${sort.dir}`);
+    }
+
     q.set('page', page);
     q.set('size', PAGE_SIZE);
     const r = await fetch('/api/users?' + q.toString(), { headers: headers() });
@@ -173,6 +228,21 @@ function TemplatesModal({ templates, onClose, onCreate, onDelete, showToast }) {
   );
 }
 
+/* Заголовок сортируемой колонки: клик — возр. → убыв. → выкл. */
+function Th({ field, sort, onSort, className = '', children }) {
+  const active = sort && sort.field === field;
+  const ico = !active ? 'fa-solid fa-sort sort-ico dim'
+      : sort.dir === 'asc' ? 'fa-solid fa-arrow-up-long sort-ico'
+          : 'fa-solid fa-arrow-down-long sort-ico';
+  return (
+      <th className={`${className} sortable${active ? ' active' : ''}`}
+          onClick={() => onSort(field)}
+          title="Сортировать по этой колонке">
+        {children} <i className={ico} />
+      </th>
+  );
+}
+
 /* ================= Главный экран ================= */
 
 export default function App() {
@@ -180,9 +250,10 @@ export default function App() {
   const [currentRole, setCurrentRole] = useState(null); // роль оператора с бэка
   const [templates, setTemplates] = useState([]);
   const [filterOpen, setFilterOpen] = useState(true);
-  const [filters, setFilters] = useState({ chatId: '', username: '', isBanned: '', isAutoConfirmOn: '', activityDays: '' });
-  const [applied, setApplied] = useState({ chatId: '', username: '', isBanned: '', isAutoConfirmOn: '', activityDays: '' });
+  const [filters, setFilters] = useState({ chatId: '', username: '', isBanned: '', isAutoConfirmOn: '', activityDays: '', dealsMode: '', dealsValue: '', dealsFrom: '', dealsTo: '' });
+  const [applied, setApplied] = useState({ chatId: '', username: '', isBanned: '', isAutoConfirmOn: '', activityDays: '', dealsMode: '', dealsValue: '', dealsFrom: '', dealsTo: '' });
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState(null); // null | { field, dir: 'asc'|'desc' }
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -199,11 +270,11 @@ export default function App() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const loadUsers = async (f, p) => {
+  const loadUsers = async (f, p, srt = sort) => {
     setLoading(true);
     setError(null);
     try {
-      const { items, total: t } = await api.searchUsers(f, p);
+      const { items, total: t } = await api.searchUsers(f, p, srt);
       setUsers(items);
       setTotal(t);
     } catch (e) {
@@ -244,15 +315,26 @@ export default function App() {
     loadUsers(filters, 0);
   };
   const doReset = () => {
-    const empty = { chatId: '', username: '', isBanned: '', isAutoConfirmOn: '', activityDays: '' };
+    const empty = { chatId: '', username: '', isBanned: '', isAutoConfirmOn: '', activityDays: '', dealsMode: '', dealsValue: '', dealsFrom: '', dealsTo: '' };
     setFilters(empty);
     setApplied(empty);
     setPage(0);
-    loadUsers(empty, 0);
+    setSort(null);
+    loadUsers(empty, 0, null);
   };
   const goPage = (p) => {
     setPage(p);
     loadUsers(applied, p);
+  };
+  // Клик по заголовку колонки: возр. → убыв. → без сортировки.
+  const toggleSort = (field) => {
+    let next;
+    if (!sort || sort.field !== field) next = { field, dir: 'asc' };
+    else if (sort.dir === 'asc') next = { field, dir: 'desc' };
+    else next = null;
+    setSort(next);
+    setPage(0);
+    loadUsers(applied, 0, next);
   };
 
   const onTemplateCreate = async (text) => {
@@ -315,6 +397,32 @@ export default function App() {
                   <div className="field"><label>Активность за последние, дней</label>
                     <input type="number" inputMode="numeric" min="1" value={filters.activityDays} onChange={(e) => setF('activityDays', e.target.value)} />
                   </div>
+                  <div className="field"><label>Количество обменов</label>
+                    <select value={filters.dealsMode} onChange={(e) => setF('dealsMode', e.target.value)}>
+                      <option value="">Не важно</option>
+                      <option value="eq">Равно</option>
+                      <option value="gt">Больше</option>
+                      <option value="lt">Меньше</option>
+                      <option value="range">Диапазон</option>
+                    </select>
+                  </div>
+                  {filters.dealsMode && filters.dealsMode !== 'range' && (
+                      <div className="field"><label>Обменов — значение</label>
+                        <input type="number" inputMode="numeric" min="0" value={filters.dealsValue}
+                               onChange={(e) => setF('dealsValue', e.target.value)} />
+                      </div>
+                  )}
+                  {filters.dealsMode === 'range' && (
+                      <div className="field"><label>Обменов: от / до</label>
+                        <div className="range-row">
+                          <input type="number" inputMode="numeric" min="0" placeholder="от" value={filters.dealsFrom}
+                                 onChange={(e) => setF('dealsFrom', e.target.value)} />
+                          <span className="range-dash">—</span>
+                          <input type="number" inputMode="numeric" min="0" placeholder="до" value={filters.dealsTo}
+                                 onChange={(e) => setF('dealsTo', e.target.value)} />
+                        </div>
+                      </div>
+                  )}
                 </div>
                 <div className="filter-actions">
                   <button className="btn btn-primary btn-sm" onClick={doSearch}><i className="fa-solid fa-magnifying-glass" /> Поиск</button>
@@ -348,16 +456,20 @@ export default function App() {
                   <table className="grid">
                     <thead>
                     <tr>
-                      <th>Telegram ID</th><th>Username</th><th>Обменов</th>
-                      <th>Последняя активность</th><th>Забанен</th><th>Автоподтв.</th>
+                      <Th field={SORTABLE.chatId} sort={sort} onSort={toggleSort} className="col-id">Telegram ID</Th>
+                      <Th field={SORTABLE.username} sort={sort} onSort={toggleSort} className="col-user">Username</Th>
+                      <Th field={SORTABLE.dealsCount} sort={sort} onSort={toggleSort} className="col-deals">Обменов</Th>
+                      <Th field={SORTABLE.lastActivity} sort={sort} onSort={toggleSort}>Последняя активность</Th>
+                      <Th field={SORTABLE.isBanned} sort={sort} onSort={toggleSort}>Забанен</Th>
+                      <Th field={SORTABLE.isAutoConfirmOn} sort={sort} onSort={toggleSort}>Автоподтв.</Th>
                     </tr>
                     </thead>
                     <tbody>
                     {users.map((u) => (
                         <tr key={u.chatId} onDoubleClick={() => setProfile(u)} title="Двойной клик — профиль">
-                          <td>{u.chatId}</td>
-                          <td>{u.username ? '@' + u.username : <span className="dash">—</span>}</td>
-                          <td>{fmtNum(u.dealsCount)}</td>
+                          <td className="col-id mono">{u.chatId}</td>
+                          <td className="col-user">{u.username ? '@' + u.username : <span className="dash">—</span>}</td>
+                          <td className="col-deals">{fmtNum(u.dealsCount)}</td>
                           <td>{u.lastActivityDate || '—'}</td>
                           <td>{u.isBanned ? <span className="badge yes">Да</span> : <span className="badge no">Нет</span>}</td>
                           <td>{u.isAutoConfirmOn ? <i className="fa-solid fa-circle-check ac-on" /> : <i className="fa-regular fa-circle ac-off" />}</td>

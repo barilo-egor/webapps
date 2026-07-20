@@ -145,9 +145,16 @@ const CSS = `
 .uwrap .balance-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; margin-top: 6px; }
 .uwrap .switch { --w: 46px; --h: 26px; position: relative; width: var(--w); height: var(--h); flex: none; cursor: pointer; display: inline-block; }
 .uwrap .switch input { display: none; }
-.uwrap .switch .track { position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,.15); transition: background .2s; }
+.uwrap .switch .track { position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,.10); border: 1px solid var(--tg-hint); transition: background .2s, border-color .2s; }
+.uwrap .switch.is-off .track { background: rgba(226,99,99,.18); border-color: var(--tg-danger); }
+.uwrap .switch.is-off .thumb { background: var(--tg-hint); }
+.uwrap .switch-wrap { display: inline-flex; align-items: center; gap: 9px; }
+.uwrap .switch-state { font-size: 12.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.uwrap .switch-state.on { color: var(--tg-success); background: rgba(75,179,113,.14); }
+.uwrap .switch-state.off { color: var(--tg-danger); background: rgba(226,99,99,.14); }
+.uwrap .err-hint { color: var(--tg-danger); font-size: 12px; }
 .uwrap .switch .thumb { position: absolute; top: 3px; left: 3px; width: calc(var(--h) - 6px); height: calc(var(--h) - 6px); border-radius: 50%; background: #fff; transition: transform .2s; }
-.uwrap .switch input:checked ~ .track { background: var(--tg-success); }
+.uwrap .switch input:checked ~ .track { background: var(--tg-success); border-color: var(--tg-success); }
 .uwrap .switch input:checked ~ .thumb { transform: translateX(calc(var(--w) - var(--h))); }
 .uwrap .ac-on { color: var(--tg-success); }
 .uwrap .ac-off { color: var(--tg-hint); }
@@ -188,28 +195,38 @@ function ensureStyles() {
 
 function Overlay({ children, onClose }) {
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
-      {children}
-    </div>
+      <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
+        {children}
+      </div>
   );
 }
 
 function Copyable({ value, children, showToast }) {
   return (
-    <span className="copyable" onClick={() => copyText(value, showToast)} title="Копировать">
+      <span className="copyable" onClick={() => copyText(value, showToast)} title="Копировать">
       {children ?? value} <i className="fa-regular fa-copy" />
     </span>
   );
 }
 
-function BalanceModal({ mode, current, onClose, onApply }) {
+function BalanceModal({ mode, current, onClose, onApply, showToast }) {
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const titles = { add: 'Добавить к балансу', sub: 'Уменьшить баланс', set: 'Новое значение баланса' };
 
+  const n = Number(value);
+  const valid = value !== '' && Number.isFinite(n);
+  // Итог операции — для проверки, что баланс не станет отрицательным.
+  const result = !valid ? null
+      : mode === 'add' ? Number(current) + n
+          : mode === 'sub' ? Number(current) - n
+              : n;
+  const negativeAmount = valid && n < 0;
+  const wouldGoNegative = result != null && result < 0;
+  const blocked = !valid || negativeAmount || wouldGoNegative;
+
   const apply = async () => {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return;
+    if (blocked) return;
     setBusy(true);
     try {
       await onApply(mode, n);
@@ -219,25 +236,32 @@ function BalanceModal({ mode, current, onClose, onApply }) {
   };
 
   return (
-    <Overlay onClose={onClose}>
-      <div className="modal sm">
-        <div className="modal-head">
-          <h2>{titles[mode]}</h2>
-          <button className="close-x" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
-          <div className="field">
-            <label>Сумма</label>
-            <input type="number" inputMode="decimal" autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
-            <span className="hint">Текущий баланс: {fmtNum(current)}</span>
+      <Overlay onClose={onClose}>
+        <div className="modal sm">
+          <div className="modal-head">
+            <h2>{titles[mode]}</h2>
+            <button className="close-x" onClick={onClose}>×</button>
+          </div>
+          <div className="modal-body">
+            <div className="field">
+              <label>Сумма</label>
+              <input type="number" inputMode="decimal" min="0" autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
+              <span className="hint">Текущий баланс: {fmtNum(current)}</span>
+              {valid && !negativeAmount && !wouldGoNegative && (
+                  <span className="hint">Станет: {fmtNum(result)}</span>
+              )}
+              {negativeAmount && <span className="err-hint">Сумма не может быть отрицательной</span>}
+              {!negativeAmount && wouldGoNegative && (
+                  <span className="err-hint">Баланс не может быть отрицательным (получится {fmtNum(result)})</span>
+              )}
+            </div>
+          </div>
+          <div className="modal-foot">
+            <button className="btn btn-secondary" onClick={onClose}>Отмена</button>
+            <button className="btn btn-primary" onClick={apply} disabled={busy || blocked}>Подтвердить</button>
           </div>
         </div>
-        <div className="modal-foot">
-          <button className="btn btn-secondary" onClick={onClose}>Отмена</button>
-          <button className="btn btn-primary" onClick={apply} disabled={busy || value === ''}>Подтвердить</button>
-        </div>
-      </div>
-    </Overlay>
+      </Overlay>
   );
 }
 
@@ -279,20 +303,18 @@ function ProfileBody({ initialUser, roles, currentRole, templates, onClose, onUp
 
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const committedEditable = () => ({
-    chatId: user.chatId,
-    initiatorId: myChatId(),
-    isAutoConfirmOn: user.isAutoConfirmOn,
-    isBanned: user.isBanned,
-    userRole: user.userRole,
-    comment: user.comment ?? '',
-  });
-
   const AUDIT = { add: 'MANUAL_ADDITION', sub: 'MANUAL_DEBITING', set: 'MANUAL' };
 
   const applyBalance = async (mode, amount) => {
     try {
-      const updated = await api.patchUser({ ...committedEditable(), balanceAuditType: AUDIT[mode], balanceAmount: amount });
+      // Шлём только операцию с балансом — остальные поля не трогаем,
+      // иначе бэк воспримет userRole как смену роли и уведомит в бот.
+      const updated = await api.patchUser({
+        chatId: user.chatId,
+        initiatorId: myChatId(),
+        balanceAuditType: AUDIT[mode],
+        balanceAmount: amount,
+      });
       setUser(updated);
       onUpdated?.(updated);
       setBalanceMode(null);
@@ -303,16 +325,24 @@ function ProfileBody({ initialUser, roles, currentRole, templates, onClose, onUp
   };
 
   const save = async () => {
+    // PATCH — частичное обновление: шлём ТОЛЬКО реально изменённые поля.
+    // Иначе бэк считает присланный userRole за смену роли и шлёт
+    // уведомление в бот, даже если роль не трогали.
+    const body = { chatId: user.chatId, initiatorId: myChatId() };
+    if (form.isAutoConfirmOn !== user.isAutoConfirmOn) body.isAutoConfirmOn = form.isAutoConfirmOn;
+    if (form.isBanned !== user.isBanned) body.isBanned = form.isBanned;
+    if (form.userRole !== user.userRole) body.userRole = form.userRole;
+    if (form.comment !== (user.comment ?? '')) body.comment = form.comment;
+
+    // Нечего сохранять — не дёргаем бэк.
+    if (Object.keys(body).length <= 2) {
+      showToast('Нет изменений для сохранения', 'info');
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await api.patchUser({
-        chatId: user.chatId,
-        initiatorId: myChatId(),
-        isAutoConfirmOn: form.isAutoConfirmOn,
-        isBanned: form.isBanned,
-        userRole: form.userRole,
-        comment: form.comment,
-      });
+      const updated = await api.patchUser(body);
       setUser(updated);
       setForm({
         isAutoConfirmOn: updated.isAutoConfirmOn,
@@ -349,94 +379,99 @@ function ProfileBody({ initialUser, roles, currentRole, templates, onClose, onUp
   const roleName = (name) => roles.find((r) => r.name === name)?.displayName || name;
 
   return (
-    <Overlay onClose={onClose}>
-      <div className="modal">
-        <div className="modal-head">
-          <h2>Профиль пользователя</h2>
-          <button className="close-x" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
-          <div className="prof-section-title"><i className="fa-solid fa-id-card" /> Основное</div>
-
-          <div className="prow"><span className="k">Telegram ID</span>
-            <span className="v"><Copyable value={user.chatId} showToast={showToast} /></span>
+      <Overlay onClose={onClose}>
+        <div className="modal">
+          <div className="modal-head">
+            <h2>Профиль пользователя</h2>
+            <button className="close-x" onClick={onClose}>×</button>
           </div>
-          <div className="prow"><span className="k">Username</span>
-            <span className="v">
+          <div className="modal-body">
+            <div className="prof-section-title"><i className="fa-solid fa-id-card" /> Основное</div>
+
+            <div className="prow"><span className="k">Telegram ID</span>
+              <span className="v"><Copyable value={user.chatId} showToast={showToast} /></span>
+            </div>
+            <div className="prow"><span className="k">Username</span>
+              <span className="v">
               {user.username
-                ? <a className="tg-link" href={'https://t.me/' + user.username} target="_blank" rel="noreferrer">@{user.username}</a>
-                : <span className="dash">Отсутствует</span>}
+                  ? <a className="tg-link" href={'https://t.me/' + user.username} target="_blank" rel="noreferrer">@{user.username}</a>
+                  : <span className="dash">Отсутствует</span>}
             </span>
-          </div>
-          <div className="prow"><span className="k">Кто привёл</span>
-            <span className="v">
+            </div>
+            <div className="prow"><span className="k">Кто привёл</span>
+              <span className="v">
               {user.fromChatId
-                ? <Copyable value={user.fromChatId} showToast={showToast} />
-                : <span className="dash">Отсутствует</span>}
+                  ? <Copyable value={user.fromChatId} showToast={showToast} />
+                  : <span className="dash">Отсутствует</span>}
             </span>
-          </div>
-          <div className="prow"><span className="k">Дата регистрации</span><span className="v">{user.registrationDate || '—'}</span></div>
-          <div className="prow"><span className="k">Дата первого обмена</span>
-            <span className="v">{loadingRef ? '…' : (ref?.firstDealDate || '—')}</span>
-          </div>
-          <div className="prow"><span className="k">Кол-во обменов</span><span className="v">{fmtNum(user.dealsCount)}</span></div>
-          <div className="prow"><span className="k">Общий объём</span>
-            <span className="v">{loadingRef ? '…' : `${fmtNum(ref?.totalRubAmount)} RUB · ${fmtNum(ref?.totalBynAmount)} BYN`}</span>
-          </div>
-          <div className="prow"><span className="k">Последняя активность</span><span className="v">{user.lastActivityDate || '—'}</span></div>
-          <div className="prow"><span className="k">Выигрышей в лотерею</span><span className="v">{fmtNum(user.lotteryCount)}</span></div>
+            </div>
+            <div className="prow"><span className="k">Дата регистрации</span><span className="v">{user.registrationDate || '—'}</span></div>
+            <div className="prow"><span className="k">Дата первого обмена</span>
+              <span className="v">{loadingRef ? '…' : (ref?.firstDealDate || '—')}</span>
+            </div>
+            <div className="prow"><span className="k">Кол-во обменов</span><span className="v">{fmtNum(user.dealsCount)}</span></div>
+            <div className="prow"><span className="k">Общий объём</span>
+              <span className="v">{loadingRef ? '…' : `${fmtNum(ref?.totalRubAmount)} RUB · ${fmtNum(ref?.totalBynAmount)} BYN`}</span>
+            </div>
+            <div className="prow"><span className="k">Последняя активность</span><span className="v">{user.lastActivityDate || '—'}</span></div>
+            <div className="prow"><span className="k">Выигрышей в лотерею</span><span className="v">{fmtNum(user.lotteryCount)}</span></div>
 
-          <div className="prow" style={{ borderBottom: 'none' }}>
-            <span className="k">Реферальный баланс</span>
-            <span className="v"><b>{fmtNum(user.referralBalance)}</b></span>
-          </div>
-          <div className="balance-btns">
-            {can.balanceAddSub(currentRole) && <button className="btn btn-secondary btn-sm" onClick={() => setBalanceMode('add')}>Добавить</button>}
-            {can.balanceAddSub(currentRole) && <button className="btn btn-secondary btn-sm" onClick={() => setBalanceMode('sub')}>Уменьшить</button>}
-            {can.balanceSet(currentRole) && <button className="btn btn-secondary btn-sm" onClick={() => setBalanceMode('set')}>Новое значение</button>}
-          </div>
+            <div className="prow" style={{ borderBottom: 'none' }}>
+              <span className="k">Реферальный баланс</span>
+              <span className="v"><b>{fmtNum(user.referralBalance)}</b></span>
+            </div>
+            <div className="balance-btns">
+              {can.balanceAddSub(currentRole) && <button className="btn btn-secondary btn-sm" onClick={() => setBalanceMode('add')}>Добавить</button>}
+              {can.balanceAddSub(currentRole) && <button className="btn btn-secondary btn-sm" onClick={() => setBalanceMode('sub')}>Уменьшить</button>}
+              {can.balanceSet(currentRole) && <button className="btn btn-secondary btn-sm" onClick={() => setBalanceMode('set')}>Новое значение</button>}
+            </div>
 
-          <div className="prow" style={{ marginTop: 10 }}>
-            <span className="k">Автоподтверждение</span>
-            <span className="v">
+            <div className="prow" style={{ marginTop: 10 }}>
+              <span className="k">Автоподтверждение</span>
+              <span className="v">
               {can.autoConfirm(currentRole) ? (
-                <label className="switch">
-                  <input type="checkbox" checked={form.isAutoConfirmOn} onChange={(e) => setF('isAutoConfirmOn', e.target.checked)} />
-                  <span className="track" /><span className="thumb" />
-                </label>
+                  <span className="switch-wrap">
+                  <span className={'switch-state ' + (form.isAutoConfirmOn ? 'on' : 'off')}>
+                    {form.isAutoConfirmOn ? 'Вкл' : 'Выкл'}
+                  </span>
+                  <label className={'switch ' + (form.isAutoConfirmOn ? 'is-on' : 'is-off')}>
+                    <input type="checkbox" checked={form.isAutoConfirmOn} onChange={(e) => setF('isAutoConfirmOn', e.target.checked)} />
+                    <span className="track" /><span className="thumb" />
+                  </label>
+                </span>
               ) : (
-                <span className={form.isAutoConfirmOn ? 'ac-on' : 'ac-off'}>{form.isAutoConfirmOn ? 'Вкл' : 'Выкл'}</span>
+                  <span className={form.isAutoConfirmOn ? 'ac-on' : 'ac-off'}>{form.isAutoConfirmOn ? 'Вкл' : 'Выкл'}</span>
               )}
             </span>
-          </div>
-          <div className="prow"><span className="k">Забанен</span>
-            <span className="v">
+            </div>
+            <div className="prow"><span className="k">Забанен</span>
+              <span className="v">
               {can.ban(currentRole) ? (
-                <select style={{ width: 'auto' }} value={form.isBanned ? 'true' : 'false'} onChange={(e) => setF('isBanned', e.target.value === 'true')}>
-                  <option value="false">Нет</option>
-                  <option value="true">Да</option>
-                </select>
+                  <select style={{ width: 'auto' }} value={form.isBanned ? 'true' : 'false'} onChange={(e) => setF('isBanned', e.target.value === 'true')}>
+                    <option value="false">Нет</option>
+                    <option value="true">Да</option>
+                  </select>
               ) : (form.isBanned ? 'Да' : 'Нет')}
             </span>
-          </div>
-          <div className="prow"><span className="k">Роль</span>
-            <span className="v">
+            </div>
+            <div className="prow"><span className="k">Роль</span>
+              <span className="v">
               {can.role(currentRole) ? (
-                <select style={{ width: 'auto' }} value={form.userRole || ''} onChange={(e) => setF('userRole', e.target.value)}>
-                  {roles.map((r) => <option key={r.name} value={r.name}>{r.displayName}</option>)}
-                </select>
+                  <select style={{ width: 'auto' }} value={form.userRole || ''} onChange={(e) => setF('userRole', e.target.value)}>
+                    {roles.map((r) => <option key={r.name} value={r.name}>{r.displayName}</option>)}
+                  </select>
               ) : roleName(form.userRole)}
             </span>
-          </div>
+            </div>
 
-          <div className="prof-section-title"><i className="fa-solid fa-users" /> Рефералы</div>
-          <div className="prow"><span className="k">Всего рефералов</span>
-            <span className="v">{loadingRef ? '…' : fmtNum(ref?.referrals?.length || 0)}</span>
-          </div>
+            <div className="prof-section-title"><i className="fa-solid fa-users" /> Рефералы</div>
+            <div className="prow"><span className="k">Всего рефералов</span>
+              <span className="v">{loadingRef ? '…' : fmtNum(ref?.referrals?.length || 0)}</span>
+            </div>
 
-          <div className="ref-table-wrap">
-            <table className="ref">
-              <thead>
+            <div className="ref-table-wrap">
+              <table className="ref">
+                <thead>
                 <tr>
                   <th>
                     <div className="col-title">Telegram ID</div>
@@ -447,95 +482,95 @@ function ProfileBody({ initialUser, roles, currentRole, templates, onClose, onUp
                     <input type="number" placeholder="N и более" title="Рефералы с этим количеством обменов и более" value={refFilter.minDeals} onChange={(e) => setRefFilter((s) => ({ ...s, minDeals: e.target.value }))} />
                   </th>
                 </tr>
-              </thead>
-              <tbody>
+                </thead>
+                <tbody>
                 {loadingRef && <tr><td colSpan={2} className="hint">Загрузка…</td></tr>}
                 {!loadingRef && referrals.length === 0 && <tr><td colSpan={2} className="hint">Нет рефералов</td></tr>}
                 {referrals.map((r) => (
-                  <tr key={r.chatId}>
-                    <td><Copyable value={r.chatId} showToast={showToast} /></td>
-                    <td>{fmtNum(r.dealsCount)}</td>
-                  </tr>
+                    <tr key={r.chatId}>
+                      <td><Copyable value={r.chatId} showToast={showToast} /></td>
+                      <td>{fmtNum(r.dealsCount)}</td>
+                    </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="prow" style={{ marginTop: 10 }}><span className="k">Начислено от рефералов</span><span className="v">{loadingRef ? '…' : fmtNum(ref?.referralAccruedAmount)}</span></div>
-          <div className="prow"><span className="k">Получено бонусов вручную</span><span className="v">{loadingRef ? '…' : fmtNum(ref?.manuallyReceivedAmount)}</span></div>
-          <div className="prow"><span className="k">Списано на сделку</span><span className="v">{loadingRef ? '…' : fmtNum(ref?.dealDebitedAmount)}</span></div>
-          <div className="prow"><span className="k">Списано вручную</span><span className="v">{loadingRef ? '…' : fmtNum(ref?.manuallyDebitedAmount)}</span></div>
-
-          <div className="prof-section-title"><i className="fa-regular fa-comment" /> Комментарий</div>
-          <div className="field">
-            <textarea value={form.comment} onChange={(e) => setF('comment', e.target.value)} />
-            <div className="comment-actions">
-              <button className="btn btn-secondary btn-sm" onClick={() => setPickTemplate(true)}>Вставить шаблон</button>
-              <button className="btn btn-secondary btn-sm" onClick={() => setF('comment', '')}>Очистить</button>
+                </tbody>
+              </table>
             </div>
-          </div>
 
-          <div className="prof-section-title" style={{ marginTop: 18 }}>
+            <div className="prow" style={{ marginTop: 10 }}><span className="k">Начислено от рефералов</span><span className="v">{loadingRef ? '…' : fmtNum(ref?.referralAccruedAmount)}</span></div>
+            <div className="prow"><span className="k">Получено бонусов вручную</span><span className="v">{loadingRef ? '…' : fmtNum(ref?.manuallyReceivedAmount)}</span></div>
+            <div className="prow"><span className="k">Списано на сделку</span><span className="v">{loadingRef ? '…' : fmtNum(ref?.dealDebitedAmount)}</span></div>
+            <div className="prow"><span className="k">Списано вручную</span><span className="v">{loadingRef ? '…' : fmtNum(ref?.manuallyDebitedAmount)}</span></div>
+
+            <div className="prof-section-title"><i className="fa-regular fa-comment" /> Комментарий</div>
+            <div className="field">
+              <textarea value={form.comment} onChange={(e) => setF('comment', e.target.value)} />
+              <div className="comment-actions">
+                <button className="btn btn-secondary btn-sm" onClick={() => setPickTemplate(true)}>Вставить шаблон</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setF('comment', '')}>Очистить</button>
+              </div>
+            </div>
+
+            <div className="prof-section-title" style={{ marginTop: 18 }}>
             <span className={'collapse-head' + (sendOpen ? ' open' : '')} style={{ flex: 1 }} onClick={() => setSendOpen((v) => !v)}>
               Отправить сообщение пользователю
               <i className="fa-solid fa-chevron-down chev" />
             </span>
-          </div>
-          {sendOpen && (
-            <div className="field">
-              <textarea placeholder="Текст сообщения" value={msgText} onChange={(e) => setMsgText(e.target.value)} />
-              <button className="btn btn-secondary btn-sm" style={{ marginTop: 8, alignSelf: 'flex-start' }}
-                onClick={() => (msgText.trim() ? setConfirmMsg(true) : showToast('Введите текст сообщения', 'error'))}>
-                <i className="fa-solid fa-paper-plane" /> Отправить
-              </button>
             </div>
-          )}
-        </div>
-
-        <div className="modal-foot">
-          <button className="btn btn-secondary" onClick={onClose}>Закрыть</button>
-          <button className="btn btn-primary" onClick={save} disabled={saving}>
-            {saving ? 'Сохранение…' : 'Сохранить'}
-          </button>
-        </div>
-      </div>
-
-      {balanceMode && (
-        <BalanceModal mode={balanceMode} current={user.referralBalance} onClose={() => setBalanceMode(null)} onApply={applyBalance} />
-      )}
-
-      {pickTemplate && (
-        <Overlay onClose={() => setPickTemplate(false)}>
-          <div className="modal sm">
-            <div className="modal-head"><h2>Вставить шаблон</h2><button className="close-x" onClick={() => setPickTemplate(false)}>×</button></div>
-            <div className="modal-body">
-              {templates.length === 0 && <div className="hint">Шаблонов нет.</div>}
-              {templates.map((t) => (
-                <div className="tmpl-pick" key={t.pid} onClick={() => { setF('comment', form.comment ? form.comment + '\n' + t.text : t.text); setPickTemplate(false); }}>
-                  {t.text}
+            {sendOpen && (
+                <div className="field">
+                  <textarea placeholder="Текст сообщения" value={msgText} onChange={(e) => setMsgText(e.target.value)} />
+                  <button className="btn btn-secondary btn-sm" style={{ marginTop: 8, alignSelf: 'flex-start' }}
+                          onClick={() => (msgText.trim() ? setConfirmMsg(true) : showToast('Введите текст сообщения', 'error'))}>
+                    <i className="fa-solid fa-paper-plane" /> Отправить
+                  </button>
                 </div>
-              ))}
-            </div>
+            )}
           </div>
-        </Overlay>
-      )}
 
-      {confirmMsg && (
-        <Overlay onClose={() => setConfirmMsg(false)}>
-          <div className="modal sm">
-            <div className="modal-head"><h2>Подтверждение</h2><button className="close-x" onClick={() => setConfirmMsg(false)}>×</button></div>
-            <div className="modal-body">
-              <div>Отправить сообщение с текстом, отображённым ниже?</div>
-              <div className="msg-preview">{msgText}</div>
-            </div>
-            <div className="modal-foot">
-              <button className="btn btn-secondary" onClick={() => setConfirmMsg(false)}>Отмена</button>
-              <button className="btn btn-primary" onClick={doSend}>Отправить</button>
-            </div>
+          <div className="modal-foot">
+            <button className="btn btn-secondary" onClick={onClose}>Закрыть</button>
+            <button className="btn btn-primary" onClick={save} disabled={saving}>
+              {saving ? 'Сохранение…' : 'Сохранить'}
+            </button>
           </div>
-        </Overlay>
-      )}
-    </Overlay>
+        </div>
+
+        {balanceMode && (
+            <BalanceModal mode={balanceMode} current={user.referralBalance} onClose={() => setBalanceMode(null)} onApply={applyBalance} showToast={showToast} />
+        )}
+
+        {pickTemplate && (
+            <Overlay onClose={() => setPickTemplate(false)}>
+              <div className="modal sm">
+                <div className="modal-head"><h2>Вставить шаблон</h2><button className="close-x" onClick={() => setPickTemplate(false)}>×</button></div>
+                <div className="modal-body">
+                  {templates.length === 0 && <div className="hint">Шаблонов нет.</div>}
+                  {templates.map((t) => (
+                      <div className="tmpl-pick" key={t.pid} onClick={() => { setF('comment', form.comment ? form.comment + '\n' + t.text : t.text); setPickTemplate(false); }}>
+                        {t.text}
+                      </div>
+                  ))}
+                </div>
+              </div>
+            </Overlay>
+        )}
+
+        {confirmMsg && (
+            <Overlay onClose={() => setConfirmMsg(false)}>
+              <div className="modal sm">
+                <div className="modal-head"><h2>Подтверждение</h2><button className="close-x" onClick={() => setConfirmMsg(false)}>×</button></div>
+                <div className="modal-body">
+                  <div>Отправить сообщение с текстом, отображённым ниже?</div>
+                  <div className="msg-preview">{msgText}</div>
+                </div>
+                <div className="modal-foot">
+                  <button className="btn btn-secondary" onClick={() => setConfirmMsg(false)}>Отмена</button>
+                  <button className="btn btn-primary" onClick={doSend}>Отправить</button>
+                </div>
+              </div>
+            </Overlay>
+        )}
+      </Overlay>
   );
 }
 
@@ -597,30 +632,30 @@ export default function UserProfile({ chatId, user: userProp, onClose, onUpdated
   }, [targetChatId]);
 
   return (
-    <div className="uwrap">
-      {!ready ? (
-        <Overlay onClose={onClose}>
-          <div className="modal sm"><div className="modal-body"><div className="state"><div className="spinner" /><div>Загрузка профиля…</div></div></div></div>
-        </Overlay>
-      ) : !user ? (
-        <Overlay onClose={onClose}>
-          <div className="modal sm">
-            <div className="modal-head"><h2>Профиль</h2><button className="close-x" onClick={onClose}>×</button></div>
-            <div className="modal-body"><div className="state"><i className="fa-solid fa-triangle-exclamation" /><div>{err || 'Пользователь не найден'}</div></div></div>
-          </div>
-        </Overlay>
-      ) : (
-        <ProfileBody
-          initialUser={user}
-          roles={roles}
-          currentRole={currentRole}
-          templates={templates}
-          onClose={onClose}
-          onUpdated={(u) => { setUser(u); onUpdated?.(u); }}
-          showToast={showToast}
-        />
-      )}
-      {toast && <div className={`toast ${toast.type}`}>{toast.message}</div>}
-    </div>
+      <div className="uwrap">
+        {!ready ? (
+            <Overlay onClose={onClose}>
+              <div className="modal sm"><div className="modal-body"><div className="state"><div className="spinner" /><div>Загрузка профиля…</div></div></div></div>
+            </Overlay>
+        ) : !user ? (
+            <Overlay onClose={onClose}>
+              <div className="modal sm">
+                <div className="modal-head"><h2>Профиль</h2><button className="close-x" onClick={onClose}>×</button></div>
+                <div className="modal-body"><div className="state"><i className="fa-solid fa-triangle-exclamation" /><div>{err || 'Пользователь не найден'}</div></div></div>
+              </div>
+            </Overlay>
+        ) : (
+            <ProfileBody
+                initialUser={user}
+                roles={roles}
+                currentRole={currentRole}
+                templates={templates}
+                onClose={onClose}
+                onUpdated={(u) => { setUser(u); onUpdated?.(u); }}
+                showToast={showToast}
+            />
+        )}
+        {toast && <div className={`toast ${toast.type}`}>{toast.message}</div>}
+      </div>
   );
 }
