@@ -303,20 +303,18 @@ function ProfileBody({ initialUser, roles, currentRole, templates, onClose, onUp
 
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const committedEditable = () => ({
-    chatId: user.chatId,
-    initiatorId: myChatId(),
-    isAutoConfirmOn: user.isAutoConfirmOn,
-    isBanned: user.isBanned,
-    userRole: user.userRole,
-    comment: user.comment ?? '',
-  });
-
   const AUDIT = { add: 'MANUAL_ADDITION', sub: 'MANUAL_DEBITING', set: 'MANUAL' };
 
   const applyBalance = async (mode, amount) => {
     try {
-      const updated = await api.patchUser({ ...committedEditable(), balanceAuditType: AUDIT[mode], balanceAmount: amount });
+      // Шлём только операцию с балансом — остальные поля не трогаем,
+      // иначе бэк воспримет userRole как смену роли и уведомит в бот.
+      const updated = await api.patchUser({
+        chatId: user.chatId,
+        initiatorId: myChatId(),
+        balanceAuditType: AUDIT[mode],
+        balanceAmount: amount,
+      });
       setUser(updated);
       onUpdated?.(updated);
       setBalanceMode(null);
@@ -327,16 +325,24 @@ function ProfileBody({ initialUser, roles, currentRole, templates, onClose, onUp
   };
 
   const save = async () => {
+    // PATCH — частичное обновление: шлём ТОЛЬКО реально изменённые поля.
+    // Иначе бэк считает присланный userRole за смену роли и шлёт
+    // уведомление в бот, даже если роль не трогали.
+    const body = { chatId: user.chatId, initiatorId: myChatId() };
+    if (form.isAutoConfirmOn !== user.isAutoConfirmOn) body.isAutoConfirmOn = form.isAutoConfirmOn;
+    if (form.isBanned !== user.isBanned) body.isBanned = form.isBanned;
+    if (form.userRole !== user.userRole) body.userRole = form.userRole;
+    if (form.comment !== (user.comment ?? '')) body.comment = form.comment;
+
+    // Нечего сохранять — не дёргаем бэк.
+    if (Object.keys(body).length <= 2) {
+      showToast('Нет изменений для сохранения', 'info');
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await api.patchUser({
-        chatId: user.chatId,
-        initiatorId: myChatId(),
-        isAutoConfirmOn: form.isAutoConfirmOn,
-        isBanned: form.isBanned,
-        userRole: form.userRole,
-        comment: form.comment,
-      });
+      const updated = await api.patchUser(body);
       setUser(updated);
       setForm({
         isAutoConfirmOn: updated.isAutoConfirmOn,

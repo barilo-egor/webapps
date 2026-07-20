@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import UserProfile from '../../shared/UserProfile.jsx';
 
 /* ============================================================
+   Пользователи — веб-апп админки. ПРОД-версия (без mock).
 
    Роль текущего оператора берём с бэка: GET /api/users/role/{myChatId},
    где myChatId — из Telegram initData. От неё зависит доступ к действиям.
@@ -31,7 +32,9 @@ const SORTABLE = {
   chatId: 'chatId',
   username: 'username',
   dealsCount: 'dealsCount',
-  lastActivityDate: 'lastActivityDate',
+  // В JSON поле зовётся lastActivityDate, но сортировка идёт по имени
+  // поля сущности — lastActivity (иначе бэк отдаёт 500).
+  lastActivity: 'lastActivity',
   isBanned: 'isBanned',
   isAutoConfirmOn: 'isAutoConfirmOn',
 };
@@ -456,7 +459,7 @@ export default function App() {
                       <Th field={SORTABLE.chatId} sort={sort} onSort={toggleSort} className="col-id">Telegram ID</Th>
                       <Th field={SORTABLE.username} sort={sort} onSort={toggleSort} className="col-user">Username</Th>
                       <Th field={SORTABLE.dealsCount} sort={sort} onSort={toggleSort} className="col-deals">Обменов</Th>
-                      <Th field={SORTABLE.lastActivityDate} sort={sort} onSort={toggleSort}>Последняя активность</Th>
+                      <Th field={SORTABLE.lastActivity} sort={sort} onSort={toggleSort}>Последняя активность</Th>
                       <Th field={SORTABLE.isBanned} sort={sort} onSort={toggleSort}>Забанен</Th>
                       <Th field={SORTABLE.isAutoConfirmOn} sort={sort} onSort={toggleSort}>Автоподтв.</Th>
                     </tr>
