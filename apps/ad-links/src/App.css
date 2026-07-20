@@ -160,6 +160,8 @@ body {
 }
 .input:focus { outline: none; border-color: var(--accent); }
 .input-num { width: 80px; text-align: center; }
+.input-select { width: auto; min-width: 130px; cursor: pointer; }
+.range-dash { color: var(--tg-hint, #90a4b8); opacity: .7; }
 
 /* ===================== СТАТИСТИКА ===================== */
 .stats-topbar { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }

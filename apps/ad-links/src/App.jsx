@@ -30,9 +30,12 @@ const realApi = {
   updateComment: (id, comment) =>
       apiFetch(`/api/ad-links/${id}`, { method: 'PATCH', body: JSON.stringify({ comment }) }),
   // GET /api/ad-links/{id}/statistic?dealsCount=N&dayActivity=N
+  //     &maxDealsCount=N&comparisonOperator=EQUALS|GREATER_THAN|LESS_THAN|RANGE
   statistic: (id, params = {}) => {
     const qs = new URLSearchParams();
     if (params.dealsCount != null && params.dealsCount !== '') qs.set('dealsCount', params.dealsCount);
+    if (params.maxDealsCount != null && params.maxDealsCount !== '') qs.set('maxDealsCount', params.maxDealsCount);
+    if (params.comparisonOperator) qs.set('comparisonOperator', params.comparisonOperator);
     if (params.dayActivity != null && params.dayActivity !== '') qs.set('dayActivity', params.dayActivity);
     const q = qs.toString();
     return apiFetch(`/api/ad-links/${id}/statistic${q ? '?' + q : ''}`);
@@ -350,10 +353,29 @@ function StatsScreen({ link, bot, onBack, showToast }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dealsCount, setDealsCount] = useState('1');
+  const [dealsOp, setDealsOp] = useState('EQUALS');   // EQUALS | GREATER_THAN | LESS_THAN | RANGE
+  const [maxDealsCount, setMaxDealsCount] = useState('3'); // верхняя граница для RANGE
   const [dayActivity, setDayActivity] = useState('1');
   const [byDealBusy, setByDealBusy] = useState(false);
   const [byActBusy, setByActBusy] = useState(false);
   const [profileChatId, setProfileChatId] = useState(null); // открытый профиль пользователя
+
+  // Параметры фильтра по количеству сделок для запроса статистики.
+  const dealsParams = () => (
+      dealsOp === 'RANGE'
+          ? { dealsCount, maxDealsCount, comparisonOperator: 'RANGE' }
+          : { dealsCount, comparisonOperator: dealsOp }
+  );
+
+  // Человекочитаемое описание условия для подписей строк.
+  const dealsLabel = () => {
+    const n = dealsCount || 0;
+    if (dealsOp === 'GREATER_THAN') return `более ${n} сделок`;
+    if (dealsOp === 'LESS_THAN') return `менее ${n} сделок`;
+    if (dealsOp === 'RANGE') return `от ${n} до ${maxDealsCount || 0} сделок`;
+    return `${n} сделок`;
+  };
+
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -365,7 +387,7 @@ function StatsScreen({ link, bot, onBack, showToast }) {
       let byAct = full.adLinkStatisticByActivity;
       // Блоки «по N» считаем отдельными запросами. Бэк может вернуть под-объект напрямую.
       try {
-        const d = await api.statistic(link.id, { dealsCount });
+        const d = await api.statistic(link.id, dealsParams());
         byDeal = d?.adLinkStatisticByDeal ?? (d && 'usersCountBy' in d ? d : byDeal);
       } catch {}
       try {
@@ -383,7 +405,7 @@ function StatsScreen({ link, bot, onBack, showToast }) {
   const recalcDeals = async () => {
     setByDealBusy(true);
     try {
-      const s = await api.statistic(link.id, { dealsCount });
+      const s = await api.statistic(link.id, dealsParams());
       // бэк на запрос с параметром может вернуть либо полный объект (с adLinkStatisticByDeal),
       // либо сразу под-объект { usersCountBy, referralsCountBy, totalUsersBy }
       const block = s?.adLinkStatisticByDeal ?? (s && 'usersCountBy' in s ? s : null);
@@ -449,15 +471,32 @@ function StatsScreen({ link, bot, onBack, showToast }) {
 
                 <StatGroup title="По количеству сделок">
                   <div className="recalc-field">
-                    <label>Кол-во сделок:</label>
+                    <label>Условие:</label>
+                    <select className="input input-select" value={dealsOp}
+                            onChange={(e) => setDealsOp(e.target.value)}>
+                      <option value="EQUALS">Равно</option>
+                      <option value="GREATER_THAN">Больше</option>
+                      <option value="LESS_THAN">Меньше</option>
+                      <option value="RANGE">Диапазон</option>
+                    </select>
+                  </div>
+                  <div className="recalc-field">
+                    <label>{dealsOp === 'RANGE' ? 'Сделок от / до:' : 'Кол-во сделок:'}</label>
                     <input type="text" inputMode="numeric" className="input input-num" value={dealsCount}
                            onChange={(e) => setDealsCount(e.target.value.replace(/[^\d]/g, ''))} />
+                    {dealsOp === 'RANGE' && (
+                        <>
+                          <span className="range-dash">—</span>
+                          <input type="text" inputMode="numeric" className="input input-num" value={maxDealsCount}
+                                 onChange={(e) => setMaxDealsCount(e.target.value.replace(/[^\d]/g, ''))} />
+                        </>
+                    )}
                     <button type="button" className="btn btn-secondary btn-sm" onClick={recalcDeals} disabled={byDealBusy}>
                       <i className={`fas ${byDealBusy ? 'fa-spinner fa-spin' : 'fa-rotate'}`}></i>
                     </button>
                   </div>
-                  <StatRow label={`Пользователей, совершивших ${dealsCount || 0} сделок`} value={formatAmount(stats.adLinkStatisticByDeal?.usersCountBy)} />
-                  <StatRow label={`Рефералов, совершивших ${dealsCount || 0} сделок`} value={formatAmount(stats.adLinkStatisticByDeal?.referralsCountBy)} />
+                  <StatRow label={`Пользователей, совершивших ${dealsLabel()}`} value={formatAmount(stats.adLinkStatisticByDeal?.usersCountBy)} />
+                  <StatRow label={`Рефералов, совершивших ${dealsLabel()}`} value={formatAmount(stats.adLinkStatisticByDeal?.referralsCountBy)} />
                   <StatRow label="Всего" value={formatAmount(stats.adLinkStatisticByDeal?.totalUsersBy)} total />
                 </StatGroup>
 
