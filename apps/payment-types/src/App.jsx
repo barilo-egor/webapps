@@ -10,16 +10,20 @@ import './App.css';
 // Контракт бэкенда:
 //   GET    /api/payment-types
 //          -> [{ pid, name, dealType, fiatCurrency, minSum,
-//               requisiteAdditionalText, isOn, discounts: [...] }, ...]
+//               requisiteAdditionalText, isOn, discounts: [...],
+//               requiredReceipt: { name, description, priority, requestMessage } }, ...]
 //   POST   /api/payment-types
 //          <- { name, dealType, fiatCurrency, minSum,
-//              requisiteAdditionalText, isOn }
+//              requisiteAdditionalText, isOn, requiredReceipt: 'NOT_REQUIRED' }
 //          -> созданный объект
 //   PUT    /api/payment-types
 //          <- { pid, name, dealType, fiatCurrency, minSum,
-//              requisiteAdditionalText, discounts: [...] }
+//              requisiteAdditionalText, discounts: [...], requiredReceipt: 'PDF' }
 //          -> обновлённый объект
 //          (ранее было PATCH; бэк перевёл обновление на PUT)
+//   GET    /api/filters/required-receipt
+//          -> [{ name: 'NOT_REQUIRED', description: 'Не требуется', priority: 0 }, ...]
+//          Требуемый чек приходит объектом, а ОТПРАВЛЯЕТСЯ строкой (name).
 //   DELETE /api/payment-types/{pid}                          -> 200 / 204
 //   PATCH  /api/payment-types/{pid}/activation?isOn=true     -> 200
 // =============================================================
@@ -64,6 +68,9 @@ const realApi = {
   // Валюты приходят как [{name, displayName}, ...]:
   // в UI показываем displayName, на бэк шлём name.
   listFiats: () => apiFetch('/api/constants/fiat'),
+  // Требуемый чек: [{name, description, priority, requestMessage}, ...]
+  // в UI показываем description, на бэк шлём name (строкой).
+  listRequiredReceipts: () => apiFetch('/api/filters/required-receipt'),
 };
 
 const paymentTypesApi = realApi;
@@ -81,7 +88,7 @@ const DEAL_TYPES = [
 // =============================================================
 // MODAL: создание/редактирование типа оплаты
 // =============================================================
-function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting }) {
+function PaymentTypeFormModal({ initial, fiats, receipts, onClose, onSubmit, isSubmitting }) {
   const isEdit = Boolean(initial?.pid);
 
   const [dealType, setDealType] = useState(initial?.dealType || 'SELL');
@@ -91,6 +98,10 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
   );
   const [minSum, setMinSum] = useState(
       initial?.minSum != null ? String(initial.minSum) : ''
+  );
+  // Требуемый чек: с бэка приходит объектом, храним и отправляем name (строку).
+  const [requiredReceipt, setRequiredReceipt] = useState(
+      initial?.requiredReceipt?.name || 'NOT_REQUIRED'
   );
   // При создании — пустой массив (показывается "Скидок нет").
   // При редактировании — сортируем по maxAmount по возрастанию.
@@ -152,6 +163,8 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
       fiatCurrency,
       minSum: minSumNum,
       requisiteAdditionalText: additionalText.trim(),
+      // На бэк уходит строка-enum (NOT_REQUIRED | ANY | PDF).
+      requiredReceipt,
     };
 
     if (isEdit) {
@@ -268,6 +281,25 @@ function PaymentTypeFormModal({ initial, fiats, onClose, onSubmit, isSubmitting 
                   min="0"
                   step="0.01"
               />
+            </div>
+
+            {/* Требуемый чек */}
+            <div className="field">
+              <label htmlFor="pt-receipt">
+                <i className="fas fa-receipt" aria-hidden="true"></i>
+                Требуемый чек
+              </label>
+              <select
+                  id="pt-receipt"
+                  value={requiredReceipt}
+                  onChange={(e) => setRequiredReceipt(e.target.value)}
+              >
+                {(receipts || []).map((r) => (
+                    <option key={r.name} value={r.name}>
+                      {r.description}
+                    </option>
+                ))}
+              </select>
             </div>
 
             {/* Скидки */}
@@ -504,6 +536,7 @@ function TableSection({
                         <th>Название</th>
                         <th>Фиатная валюта</th>
                         <th>Минимальная сумма</th>
+                        <th>Требуемый чек</th>
                         <th aria-label="Удаление" className="col-action"></th>
                       </tr>
                       </thead>
@@ -533,6 +566,9 @@ function TableSection({
                             </td>
                             <td>{fiatLabel(it.fiatCurrency)}</td>
                             <td>{formatNumber(it.minSum)}</td>
+                            <td className="cell-receipt">
+                              {it.requiredReceipt?.description || '—'}
+                            </td>
                             <td className="cell-action">
                               <button
                                   type="button"
@@ -587,6 +623,7 @@ export default function App() {
   const [error, setError] = useState(null);
 
   const [fiats, setFiats] = useState([]);
+  const [receipts, setReceipts] = useState([]); // справочник «Требуемый чек»
 
   const [editing, setEditing] = useState(null); // null | 'new' | объект
   const [toDelete, setToDelete] = useState(null);
@@ -611,6 +648,14 @@ export default function App() {
 
           setFiats([]);
         });
+  }, []);
+
+  // Справочник «Требуемый чек»: [{name, description, priority}, ...]
+  useEffect(() => {
+    paymentTypesApi
+        .listRequiredReceipts()
+        .then((data) => setReceipts(Array.isArray(data) ? data : []))
+        .catch(() => setReceipts([]));
   }, []);
 
   const loadItems = useCallback(async () => {
@@ -783,6 +828,7 @@ export default function App() {
             <PaymentTypeFormModal
                 initial={editing === 'new' ? null : editing}
                 fiats={fiats}
+                receipts={receipts}
                 onClose={() => !isSubmitting && setEditing(null)}
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}

@@ -590,7 +590,8 @@ body {
    иначе кнопка обрезается и появляется "..." */
 .pt-table .cell-name,
 .pt-table .cell-fiat,
-.pt-table .cell-minsum {
+.pt-table .cell-minsum,
+.pt-table .cell-receipt {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -813,3 +814,5 @@ body {
     display: none;
   }
 }
+/* Колонка «Требуемый чек» — только чтение, без редактирования по месту */
+.pt-table .cell-receipt { color: var(--tg-hint, #708499); }
