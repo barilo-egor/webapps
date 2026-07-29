@@ -378,25 +378,29 @@ function HistoryTab({ showToast, onOpenProfile }) {
               <input type="text" inputMode="numeric" placeholder="напр. 555000111" value={filters.chatId}
                      onChange={(e) => setF('chatId', e.target.value.replace(/[^\d]/g, ''))} />
             </div>
-            <div className="field"><label>Дата розыгрыша</label>
-              <select value={filters.dateMode} onChange={(e) => setF('dateMode', e.target.value)}>
-                <option value="equal">Равна</option>
-                <option value="range">Диапазон</option>
-              </select>
-            </div>
-            {filters.dateMode === 'equal' ? (
-                <div className="field"><label>Дата</label>
-                  <input type="date" value={filters.dateEqual} onChange={(e) => setF('dateEqual', e.target.value)} />
-                </div>
-            ) : (
-                <div className="field"><label>С / по</label>
-                  <div className="range-row">
-                    <input type="date" value={filters.dateFrom} onChange={(e) => setF('dateFrom', e.target.value)} />
-                    <span className="range-dash">—</span>
-                    <input type="date" value={filters.dateTo} onChange={(e) => setF('dateTo', e.target.value)} />
+            {/* Пара «Дата розыгрыша» + «Дата» — в одном блоке, чтобы сетка
+              никогда не разносила их по разным строкам. */}
+            <div className="field-pair">
+              <div className="field"><label>Дата розыгрыша</label>
+                <select value={filters.dateMode} onChange={(e) => setF('dateMode', e.target.value)}>
+                  <option value="equal">Равна</option>
+                  <option value="range">Диапазон</option>
+                </select>
+              </div>
+              {filters.dateMode === 'equal' ? (
+                  <div className="field"><label>Дата</label>
+                    <input type="date" value={filters.dateEqual} onChange={(e) => setF('dateEqual', e.target.value)} />
                   </div>
-                </div>
-            )}
+              ) : (
+                  <div className="field"><label>С / по</label>
+                    <div className="range-row">
+                      <input type="date" value={filters.dateFrom} onChange={(e) => setF('dateFrom', e.target.value)} />
+                      <span className="range-dash">—</span>
+                      <input type="date" value={filters.dateTo} onChange={(e) => setF('dateTo', e.target.value)} />
+                    </div>
+                  </div>
+              )}
+            </div>
           </div>
           <div className="filter-actions">
             <button className="btn btn-primary" onClick={() => load(filters)}><i className="fa-solid fa-magnifying-glass" /> Поиск</button>

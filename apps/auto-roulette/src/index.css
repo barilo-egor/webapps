@@ -159,7 +159,18 @@ table.grid td.c-num, table.grid th.c-num { text-align: right; }
 
 /* ---- Фильтр ---- */
 .filter-card { background: var(--tg-section-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
-.filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+/* Фиксированные точки перелома вместо auto-fit: состояния с 3 колонками,
+   где пара «Дата розыгрыша» + «Дата» разрывалась по строкам, больше нет. */
+.filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+/* Пара полей даты — всегда рядом: свой блок на две колонки сетки. */
+.field-pair { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 12px; grid-column: span 2; }
+@media (max-width: 900px) {
+  .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .filter-grid { grid-template-columns: 1fr; }
+  .field-pair { grid-column: auto; grid-template-columns: 1fr; }
+}
 .filter-actions { display: flex; gap: 10px; margin-top: 14px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: 13px; font-weight: 600; color: var(--tg-text); }
@@ -168,8 +179,8 @@ table.grid td.c-num, table.grid th.c-num { text-align: right; }
   font-family: inherit; font-size: 14px; color: var(--tg-text); background: var(--tg-bg);
 }
 .field input:focus, .field select:focus, .modal textarea:focus { outline: none; border-color: var(--accent); }
-.range-row { display: flex; align-items: center; gap: 8px; }
-.range-row input { flex: 1; min-width: 0; }
+.range-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.range-row input { flex: 1 1 120px; min-width: 0; }
 .range-dash { color: var(--tg-hint); }
 
 /* ---- История (сворачиваемые строки) ---- */
