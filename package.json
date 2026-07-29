@@ -25,7 +25,9 @@
     "dev:ad-links": "npm run dev -w @webapps/ad-links",
     "build:ad-links": "npm run build -w @webapps/ad-links",
     "dev:bonus": "npm run dev -w @webapps/bonus",
-    "build:bonus": "npm run build -w @webapps/bonus"
+    "build:bonus": "npm run build -w @webapps/bonus",
+    "dev:auto-roulette": "npm run dev -w @webapps/auto-roulette",
+    "build:auto-roulette": "npm run build -w @webapps/auto-roulette"
   },
 
   "devDependencies": {
