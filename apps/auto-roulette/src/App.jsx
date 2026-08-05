@@ -28,10 +28,17 @@ function Overlay({ children, onClose }) {
   );
 }
 
-function ConfirmModal({ title, text, confirmText = 'Да', cancelText = 'Отмена', danger, onConfirm, onClose, busy }) {
+function ConfirmModal({ title, text, confirmText = 'Да', cancelText = 'Отмена', danger, onConfirm, onClose, busy, busyText = 'Выполняется…' }) {
   return (
       <Overlay onClose={busy ? undefined : onClose}>
         <div className="modal modal-sm">
+          {/* Маска ожидания: пока идёт запрос, окно закрыто от повторных нажатий */}
+          {busy && (
+              <div className="modal-mask" role="status" aria-live="polite">
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
+                <span>{busyText}</span>
+              </div>
+          )}
           <div className="modal-head">
             <h2 className={danger ? 'danger' : ''}>{title}</h2>
             <button className="close-x" onClick={onClose} disabled={busy}>×</button>
@@ -40,7 +47,7 @@ function ConfirmModal({ title, text, confirmText = 'Да', cancelText = 'Отм�
           <div className="modal-foot">
             <button className="btn btn-secondary" onClick={onClose} disabled={busy}>{cancelText}</button>
             <button className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} onClick={onConfirm} disabled={busy}>
-              {busy ? '...' : confirmText}
+              {busy ? <><i className="fa-solid fa-spinner fa-spin" /> Подождите…</> : confirmText}
             </button>
           </div>
         </div>
@@ -48,38 +55,120 @@ function ConfirmModal({ title, text, confirmText = 'Да', cancelText = 'Отм�
   );
 }
 
+/* Размер страницы. Для авторулетки — 20 (в остальных аппах проекта 50).
+   Сортировку задаёт бэк: история всегда от старой рулетки к новой. */
+const PAGE_SIZE = 20;
+
+/* ---- Пагинация (разметка и классы как в withdrawal-history) ----
+   Скрывается только при полном отсутствии записей. */
+function Pagination({ page, total, onPage, busy, label }) {
+  if (!total) return null;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  return (
+      <div className="pagination">
+        <span className="pagination-info">{label}: {fmtNum(total)}</span>
+        <div className="pagination-controls">
+          <button type="button" className="page-btn" onClick={() => onPage(0)}
+                  disabled={busy || page <= 0} aria-label="Первая" title="Первая">
+            <i className="fa-solid fa-angles-left" aria-hidden="true" />
+          </button>
+          <button type="button" className="page-btn" onClick={() => onPage(page - 1)}
+                  disabled={busy || page <= 0} aria-label="Назад" title="Назад">
+            <i className="fa-solid fa-chevron-left" aria-hidden="true" />
+          </button>
+          <span className="page-current">{page + 1} / {pageCount}</span>
+          <button type="button" className="page-btn" onClick={() => onPage(page + 1)}
+                  disabled={busy || page >= pageCount - 1} aria-label="Вперёд" title="Вперёд">
+            <i className="fa-solid fa-chevron-right" aria-hidden="true" />
+          </button>
+          <button type="button" className="page-btn" onClick={() => onPage(pageCount - 1)}
+                  disabled={busy || page >= pageCount - 1} aria-label="Последняя" title="Последняя">
+            <i className="fa-solid fa-angles-right" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+  );
+}
+
 /* ==================== Вкладка «Текущая рулетка» ==================== */
 function CurrentTab({ showToast, onOpenProfile }) {
   const [loading, setLoading] = useState(true);
+  const [firstLoad, setFirstLoad] = useState(true); // полноэкранный спиннер — только один раз
   const [info, setInfo] = useState(null);      // объект инфо или null (нет активной)
   const [count, setCount] = useState(0);       // набрано участников
   const [autostart, setAutostart] = useState(false);
-  const [parts, setParts] = useState([]);      // участники
+  const [parts, setParts] = useState([]);      // участники текущей страницы
+  const [page, setPage] = useState(0);         // номер страницы участников
+  const [total, setTotal] = useState(0);       // всего участников (для переключателя)
   const [modal, setModal] = useState(null);    // 'start' | 'stop' | 'clear' | 'spin' | 'autostart'
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);      // ручное «Обновить»
+  const [autoRefreshing, setAutoRefreshing] = useState(false); // тихое автообновление
 
-  const reload = useCallback(async () => {
-    setLoading(true);
+  // quiet = не показывать спиннер и не глотать ошибку (для фоновых обновлений)
+  const load = useCallback(async (p, quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const [inf, cnt] = await Promise.all([api.getInfo(), api.participantsCount()]);
       setInfo(inf);
       setCount(cnt);
       // участники — грузим, только если список не пуст (или рулетка активна)
       if (cnt > 0) {
-        const { items } = await api.participants(0, 50);
+        const { items, total: t } = await api.participants(p, PAGE_SIZE);
         setParts(items);
+        // если X-Total-Count не пришёл, опираемся на /participants/count
+        setTotal(Math.max(t || 0, cnt));
       } else {
         setParts([]);
+        setTotal(0);
       }
     } catch (e) {
+      if (quiet) throw e;
       showToast(e.message || 'Ошибка загрузки', 'error');
     } finally {
-      setLoading(false);
+      if (!quiet) { setLoading(false); setFirstLoad(false); }
     }
   }, [showToast]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { load(page); }, [load, page]);
   useEffect(() => { api.getAutostart().then(setAutostart).catch(() => {}); }, []);
+
+  // Актуальные значения для таймера (иначе внутри интервала останутся старые).
+  const pageRef = useRef(0);
+  const busyRef = useRef(false);
+  useEffect(() => { pageRef.current = page; }, [page]);
+  useEffect(() => { busyRef.current = loading || busy || refreshing; }, [loading, busy, refreshing]);
+
+  // Ручное «Обновить» — текущая страница, с индикацией и тостом.
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load(pageRef.current, true);
+      showToast('Данные обновлены', 'success');
+    } catch {
+      showToast('Не удалось обновить данные', 'error');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Автообновление каждые 30 сек — тихо, участники набегают в реальном времени.
+  useEffect(() => {
+    const id = setInterval(async () => {
+      if (document.hidden || busyRef.current) return;
+      setAutoRefreshing(true);
+      try { await load(pageRef.current, true); }
+      catch { /* фоновые ошибки игнорируем */ }
+      finally { setTimeout(() => setAutoRefreshing(false), 600); }
+    }, 30000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  // После действий список меняется — возвращаемся на первую страницу.
+  const reload = useCallback(async () => {
+    if (page === 0) await load(0);
+    else setPage(0); // смена страницы сама запустит загрузку
+  }, [page, load]);
 
   // Состояние вкладки: 'active' | 'stopped' | 'none'
   const state = info ? 'active' : (count > 0 ? 'stopped' : 'none');
@@ -123,7 +212,7 @@ function CurrentTab({ showToast, onOpenProfile }) {
     catch (e) { showToast(e.message, 'error'); } finally { setBusy(false); }
   };
 
-  if (loading) return <div className="state"><i className="fa-solid fa-spinner fa-spin" /> Загрузка…</div>;
+  if (loading && firstLoad) return <div className="state"><i className="fa-solid fa-spinner fa-spin" /> Загрузка…</div>;
 
   return (
       <div className="tab-pane">
@@ -198,7 +287,24 @@ function CurrentTab({ showToast, onOpenProfile }) {
 
         {/* Таблица участников (в активном и остановленном состоянии) */}
         {state !== 'none' && (
-            <ParticipantsTable parts={parts} onOpenProfile={onOpenProfile} />
+            <>
+              <div className="refresh-bar">
+                {refreshing && (
+                    <span className="refresh-status"><span className="dot" /> Обновление данных…</span>
+                )}
+                {autoRefreshing && !refreshing && (
+                    <span className="auto-refresh"><i className="fa-solid fa-sync-alt fa-spin" aria-hidden="true" /> Обновление…</span>
+                )}
+                <button type="button" className="btn btn-secondary" onClick={handleRefresh} disabled={refreshing || busy}>
+                  <i className={`fa-solid fa-sync-alt ${refreshing ? 'fa-spin' : ''}`} aria-hidden="true" />
+                  Обновить
+                </button>
+              </div>
+              <ParticipantsTable
+                  parts={parts} total={total} page={page} busy={loading}
+                  onPage={setPage} onOpenProfile={onOpenProfile}
+              />
+            </>
         )}
 
         {/* Модалки */}
@@ -206,22 +312,23 @@ function CurrentTab({ showToast, onOpenProfile }) {
             <StartModal busy={busy} onClose={() => setModal(null)} onStart={doStart} showToast={showToast} />
         )}
         {modal === 'stop' && (
-            <ConfirmModal danger title="Остановить рулетку" busy={busy}
+            <ConfirmModal danger title="Остановить рулетку" busy={busy} busyText="Останавливаем рулетку…"
                           text="Текущая рулетка будет отменена без розыгрыша. Список участников сохранится — его можно очистить отдельно. Продолжить?"
                           confirmText="Остановить" onConfirm={doStop} onClose={() => setModal(null)} />
         )}
         {modal === 'clear' && (
-            <ConfirmModal danger title="Очистить список" busy={busy}
+            <ConfirmModal danger title="Очистить список" busy={busy} busyText="Очищаем список…"
                           text="Все участники остановленной рулетки будут удалены из списка. Продолжить?"
                           confirmText="Очистить" onConfirm={doClear} onClose={() => setModal(null)} />
         )}
         {modal === 'spin' && (
             <ConfirmModal title={`Прокрутить рулетку №${info?.roundNo}?`} busy={busy}
+                          busyText="Идёт розыгрыш, не закрывайте окно…"
                           text="Будет проведён розыгрыш призов среди участников."
                           confirmText="Да" onConfirm={doSpin} onClose={() => setModal(null)} />
         )}
         {modal === 'autostart' && (
-            <ConfirmModal title="Включить автостарт" busy={busy}
+            <ConfirmModal title="Включить автостарт" busy={busy} busyText="Сохраняем настройку…"
                           text="Рулетки будут запускаться автоматически с теми же лимитом и призовыми местами, что и в предыдущей рулетке. Вы действительно хотите включить автостарт?"
                           confirmText="Включить" onConfirm={confirmAutostart} onClose={() => setModal(null)} />
         )}
@@ -230,31 +337,34 @@ function CurrentTab({ showToast, onOpenProfile }) {
 }
 
 /* ---- Таблица участников ---- */
-function ParticipantsTable({ parts, onOpenProfile }) {
+function ParticipantsTable({ parts, total, page, busy, onPage, onOpenProfile }) {
   if (!parts.length) {
     return <div className="state state-empty"><i className="fa-solid fa-users" /> Участников пока нет</div>;
   }
   return (
-      <div className="table-wrap">
-        <table className="grid">
-          <thead>
-          <tr><th className="c-num">Номер</th><th className="c-id">Chat ID</th><th>Username</th><th>Имя</th></tr>
-          </thead>
-          <tbody>
-          {parts.map((p) => {
-            const u = p.user || {};
-            return (
-                <tr key={p.number} onDoubleClick={() => u.chatId != null && onOpenProfile(u.chatId)} title="Двойной клик — профиль">
-                  <td className="c-num mono">{p.number}</td>
-                  <td className="c-id mono">{u.chatId}</td>
-                  <td className={u.username ? '' : 'muted'}>{usernameOrHidden(u)}</td>
-                  <td>{fullName(u) || <span className="muted">—</span>}</td>
-                </tr>
-            );
-          })}
-          </tbody>
-        </table>
-      </div>
+      <>
+        <div className="table-wrap">
+          <table className="grid">
+            <thead>
+            <tr><th className="c-num">Номер</th><th className="c-id">Chat ID</th><th>Username</th><th>Имя</th></tr>
+            </thead>
+            <tbody>
+            {parts.map((p) => {
+              const u = p.user || {};
+              return (
+                  <tr key={p.number} onDoubleClick={() => u.chatId != null && onOpenProfile(u.chatId)} title="Двойной клик — профиль">
+                    <td className="c-num mono">{p.number}</td>
+                    <td className="c-id mono">{u.chatId}</td>
+                    <td className={u.username ? '' : 'muted'}>{usernameOrHidden(u)}</td>
+                    <td>{fullName(u) || <span className="muted">—</span>}</td>
+                  </tr>
+              );
+            })}
+            </tbody>
+          </table>
+        </div>
+        <Pagination page={page} total={total} busy={busy} onPage={onPage} label="Всего участников" />
+      </>
   );
 }
 
@@ -280,6 +390,12 @@ function StartModal({ busy, onClose, onStart, showToast }) {
   return (
       <Overlay onClose={busy ? undefined : onClose}>
         <div className="modal">
+          {busy && (
+              <div className="modal-mask" role="status" aria-live="polite">
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
+                <span>Запускаем рулетку…</span>
+              </div>
+          )}
           <div className="modal-head">
             <h2>Запуск рулетки</h2>
             <button className="close-x" onClick={onClose} disabled={busy}>×</button>
@@ -321,7 +437,7 @@ function StartModal({ busy, onClose, onStart, showToast }) {
           <div className="modal-foot">
             <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Отмена</button>
             <button className="btn btn-primary" onClick={submit} disabled={busy}>
-              {busy ? '...' : 'Запустить'}
+              {busy ? <><i className="fa-solid fa-spinner fa-spin" /> Подождите…</> : 'Запустить'}
             </button>
           </div>
         </div>
@@ -332,13 +448,17 @@ function StartModal({ busy, onClose, onStart, showToast }) {
 /* ==================== Вкладка «История победителей» ==================== */
 function HistoryTab({ showToast, onOpenProfile }) {
   const empty = { roundNo: '', chatId: '', dateMode: 'equal', dateEqual: '', dateFrom: '', dateTo: '' };
-  const [filters, setFilters] = useState(empty);
+  const [filters, setFilters] = useState(empty);   // что набрано в полях
+  const [applied, setApplied] = useState(empty);   // что реально отправлено (для листания)
   const [rows, setRows] = useState([]);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [firstLoad, setFirstLoad] = useState(true);
   const [expanded, setExpanded] = useState({}); // roundNo -> bool
 
-  const buildBody = (f) => {
-    const b = { page: 0, size: 50 };
+  const buildBody = (f, p) => {
+    const b = { page: p, size: PAGE_SIZE };
     if (f.roundNo !== '') b.rouletteNumber = Number(f.roundNo);
     if (f.chatId !== '') b.winnerChatId = Number(f.chatId);
     // Даты — ISO-8601; бэк ищет без учёта времени.
@@ -354,17 +474,24 @@ function HistoryTab({ showToast, onOpenProfile }) {
     return b;
   };
 
-  const load = useCallback(async (f) => {
+  const load = useCallback(async (f, p) => {
     setLoading(true);
-    try { const { items } = await api.history(buildBody(f)); setRows(items); }
+    try {
+      const { items, total: t } = await api.history(buildBody(f, p));
+      setRows(items);
+      setTotal(t);
+      setExpanded({}); // на новой странице раскрытые строки уже не те
+    }
     catch (e) { showToast(e.message, 'error'); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setFirstLoad(false); }
   }, [showToast]);
 
-  useEffect(() => { load(empty); }, [load]);
+  // Загрузка при старте, при поиске (меняется applied) и при листании (меняется page).
+  useEffect(() => { load(applied, page); }, [load, applied, page]);
 
   const setF = (k, v) => setFilters((p) => ({ ...p, [k]: v }));
-  const reset = () => { setFilters(empty); load(empty); };
+  const search = () => { setApplied(filters); setPage(0); };
+  const reset = () => { setFilters(empty); setApplied(empty); setPage(0); };
 
   return (
       <div className="tab-pane">
@@ -403,12 +530,12 @@ function HistoryTab({ showToast, onOpenProfile }) {
             </div>
           </div>
           <div className="filter-actions">
-            <button className="btn btn-primary" onClick={() => load(filters)}><i className="fa-solid fa-magnifying-glass" /> Поиск</button>
+            <button className="btn btn-primary" onClick={search}><i className="fa-solid fa-magnifying-glass" /> Поиск</button>
             <button className="btn btn-secondary" onClick={reset}>Сбросить</button>
           </div>
         </div>
 
-        {loading ? (
+        {loading && firstLoad ? (
             <div className="state"><i className="fa-solid fa-spinner fa-spin" /> Загрузка…</div>
         ) : rows.length === 0 ? (
             <div className="state state-empty"><i className="fa-solid fa-clock-rotate-left" /> Нет разыгранных рулеток</div>
@@ -453,6 +580,10 @@ function HistoryTab({ showToast, onOpenProfile }) {
                 );
               })}
             </div>
+        )}
+
+        {!(loading && firstLoad) && (
+            <Pagination page={page} total={total} busy={loading} onPage={setPage} label="Всего рулеток" />
         )}
       </div>
   );
@@ -508,33 +639,47 @@ const MESSAGES = [
   { code: 'ROULETTE_WINNER_MESSAGE', title: 'Личное оповещение победителю', hint: 'Плейсхолдеры: %1$s — номер, %2$s — место, %3$s — приз, %4$s — список победителей' },
   { code: 'ROULETTE_CLOSED_MESSAGE', title: 'Рулетка закрыта (рассылка всем)', hint: 'Плейсхолдер: %1$s — лимит участников' },
   { code: 'ROULETTE_NEW_MESSAGE', title: 'Старт новой рулетки (рассылка всем)', hint: 'Без плейсхолдеров' },
+  { code: 'ROULETTE_CURRENT_PARTICIPANT', title: 'Текущие участники рулетки', hint: 'Плейсхолдеры (без номеров, по порядку): первый %s — список участников, второй %s — сколько мест осталось' },
+  { code: 'ROULETTE_WINNERS_LIST', title: 'Список победителей (топ 20)', hint: 'Плейсхолдер: %1$s — топ участников' },
+  { code: 'ROULETTE_PARTICIPANT_ADD', title: 'Участник добавлен в рулетку', hint: 'Плейсхолдер: %1$s — номер участника. Допустимы HTML-теги, например <code>' },
 ];
 
 function MessagesTab({ showToast }) {
   const [vals, setVals] = useState({});      // code -> value
-  const [ids, setIds] = useState({});        // code -> id (для PUT)
+  const [ids, setIds] = useState({});        // code -> id (для сохранения)
+  const [failed, setFailed] = useState([]);  // коды, которых нет на бэке
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
-      try {
-        const res = await Promise.all(MESSAGES.map((m) => api.getMessage(m.code)));
-        const v = {}, id = {};
-        res.forEach((r, i) => { v[MESSAGES[i].code] = r?.value ?? ''; id[MESSAGES[i].code] = r?.id ?? MESSAGES[i].code; });
-        setVals(v); setIds(id);
-      } catch (e) { showToast(e.message, 'error'); }
-      finally { setLoading(false); }
+      // allSettled, а не all: одно отсутствующее сообщение не должно ронять всю вкладку.
+      const res = await Promise.allSettled(MESSAGES.map((m) => api.getMessage(m.code)));
+      const v = {}, id = {}, bad = [];
+      res.forEach((r, i) => {
+        const c = MESSAGES[i].code;
+        if (r.status === 'fulfilled') {
+          v[c] = r.value?.value ?? '';
+          id[c] = r.value?.id ?? c;
+        } else {
+          v[c] = ''; id[c] = c; bad.push(c);
+        }
+      });
+      setVals(v); setIds(id); setFailed(bad); setLoading(false);
+      if (bad.length) showToast(`Не загрузились сообщения: ${bad.join(', ')}`, 'error');
     })();
   }, [showToast]);
 
   const save = async () => {
     setSaving(true);
     try {
-      await Promise.all(MESSAGES.map((m) => api.saveMessage(ids[m.code], vals[m.code])));
-      showToast('Сообщения сохранены', 'success');
-    } catch (e) { showToast(e.message, 'error'); }
-    finally { setSaving(false); }
+      // Незагруженные не отправляем — иначе затрём их пустой строкой.
+      const targets = MESSAGES.filter((m) => !failed.includes(m.code));
+      const res = await Promise.allSettled(targets.map((m) => api.saveMessage(ids[m.code], vals[m.code])));
+      const bad = targets.filter((_, i) => res[i].status === 'rejected').map((m) => m.title);
+      if (bad.length) showToast(`Не сохранены: ${bad.join('; ')}`, 'error');
+      else showToast('Сообщения сохранены', 'success');
+    } finally { setSaving(false); }
   };
 
   if (loading) return <div className="state"><i className="fa-solid fa-spinner fa-spin" /> Загрузка…</div>;
@@ -542,14 +687,22 @@ function MessagesTab({ showToast }) {
   return (
       <div className="tab-pane">
         <div className="msg-list">
-          {MESSAGES.map((m) => (
-              <div className="msg-item" key={m.code}>
-                <label className="msg-title">{m.title}</label>
-                <textarea rows={5} value={vals[m.code] ?? ''}
-                          onChange={(e) => setVals((p) => ({ ...p, [m.code]: e.target.value }))} />
-                <span className="msg-hint">{m.hint}</span>
-              </div>
-          ))}
+          {MESSAGES.map((m) => {
+            const missing = failed.includes(m.code);
+            return (
+                <div className="msg-item" key={m.code}>
+                  <label className="msg-title">{m.title}</label>
+                  <textarea rows={5} value={vals[m.code] ?? ''} disabled={missing}
+                            placeholder={missing ? '—' : ''}
+                            onChange={(e) => setVals((p) => ({ ...p, [m.code]: e.target.value }))} />
+                  {(missing || m.hint) && (
+                      <span className={`msg-hint ${missing ? 'msg-error' : ''}`}>
+                  {missing ? `Сообщение ${m.code} не найдено на бэке — редактирование недоступно` : m.hint}
+                </span>
+                  )}
+                </div>
+            );
+          })}
         </div>
         <div className="msg-foot">
           <button className="btn btn-primary" onClick={save} disabled={saving}>
@@ -564,7 +717,7 @@ function MessagesTab({ showToast }) {
 const TABS = [
   { id: 'current', label: 'Текущая рулетка', icon: 'fa-circle-play' },
   { id: 'history', label: 'История победителей', icon: 'fa-clock-rotate-left' },
-  { id: 'top', label: 'Топ', icon: 'fa-ranking-star' },
+  { id: 'top', label: 'Топ 20', icon: 'fa-ranking-star' },
   { id: 'messages', label: 'Сообщения', icon: 'fa-comment-dots' },
 ];
 

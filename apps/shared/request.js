@@ -71,8 +71,8 @@ export async function request(url, options = {}) {
     ...rest,
     headers: buildHeaders(headers),
     ...(body !== undefined
-      ? { body: typeof body === 'string' ? body : JSON.stringify(body) }
-      : {}),
+        ? { body: typeof body === 'string' ? body : JSON.stringify(body) }
+        : {}),
   });
 
   // Штатное «данных нет» (напр. активной рулетки не существует).
@@ -82,13 +82,13 @@ export async function request(url, options = {}) {
 
   const ct = res.headers.get('content-type') || '';
   const data = ct.includes('application/json')
-    ? await res.json().catch(() => null)
-    : await res.text().catch(() => null);
+      ? await res.json().catch(() => null)
+      : await res.text().catch(() => null);
 
   if (!res.ok) {
     // Бэк присылает ошибки как {"error":"текст"} — показываем текст пользователю.
     const msg = (data && typeof data === 'object' && (data.error || data.message))
-      || `Ошибка ${res.status}`;
+        || `Ошибка ${res.status}`;
     const err = new Error(msg);
     err.status = res.status;
     throw err;
