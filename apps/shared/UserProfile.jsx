@@ -454,6 +454,13 @@ function ProfileBody({ initialUser, roles, currentRole, templates, onClose, onUp
               ) : (form.isBanned ? 'Да' : 'Нет')}
             </span>
             </div>
+            {/* Причина бана — показываем только у забаненных.
+                Поле banReason приходит с бэка; если пусто — «Неизвестно». */}
+            {form.isBanned && (
+                <div className="prow"><span className="k">Причина бана</span>
+                  <span className="v">{user.banReason?.trim() ? user.banReason : 'Неизвестно'}</span>
+                </div>
+            )}
             <div className="prow"><span className="k">Роль</span>
               <span className="v">
               {can.role(currentRole) ? (
