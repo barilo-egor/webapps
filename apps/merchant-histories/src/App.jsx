@@ -111,8 +111,12 @@ const EMPTY_FILTER = {
   dealId: '', details: '', initiatorApp: '', merchants: [], amount: '', merchantOrderId: '', userId: '',
 };
 
-function buildBody(f, page) {
+function buildBody(f, page, sort) {
+  // Сортировка (контракт бэка, Spring-стиль): sort: "<поле>,<asc|desc>" в теле запроса.
+  // Имена полей совпадают с ключами ответа; неизвестное поле бэк отдаёт 500,
+  // поэтому отправляем только ключи из COLUMNS.
   const b = { page, size: PAGE_SIZE };
+  if (sort && sort.field && sort.dir) b.sort = `${sort.field},${sort.dir}`;
   if (f.dealId.trim() !== '') b.dealId = Number(f.dealId);
   if (f.userId.trim() !== '') b.userId = Number(f.userId);
   if (f.details.trim() !== '') b.details = f.details.trim();
@@ -266,16 +270,25 @@ const COLUMNS = [
   { key: 'userId', title: 'Chat ID', tooltip: 'Chat ID пользователя', align: 'left' },
 ];
 
-function HistoryTable({ rows }) {
+function HistoryTable({ rows, sort, onSort }) {
   return (
       <div className="table-wrapper">
         <div className="htable">
           <div className="htrow htable-head">
-            {COLUMNS.map((c) => (
-                <div key={c.key} className={`hcell hhead hcell-${c.align}`}>
-                  {c.tooltip ? <span className="th-tooltip" title={c.tooltip}>{c.title}</span> : c.title}
-                </div>
-            ))}
+            {COLUMNS.map((c) => {
+              const active = sort && sort.field === c.key;
+              const ico = !active ? 'fa-solid fa-sort sort-ico dim'
+                  : sort.dir === 'asc' ? 'fa-solid fa-arrow-up-long sort-ico'
+                      : 'fa-solid fa-arrow-down-long sort-ico';
+              return (
+                  <div key={c.key}
+                       className={`hcell hhead hcell-${c.align} sortable${active ? ' active' : ''}`}
+                       onClick={() => onSort(c.key)}
+                       title={c.tooltip ? `${c.tooltip} — сортировать` : 'Сортировать по этой колонке'}>
+                    {c.title} <i className={ico} />
+                  </div>
+              );
+            })}
           </div>
           {rows.map((r) => (
               <div className="htrow" key={r.dealId + '|' + r.createdAt}>
@@ -355,6 +368,7 @@ export default function App() {
   const [draft, setDraft] = useState(EMPTY_FILTER);
   const [applied, setApplied] = useState(EMPTY_FILTER);
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState(null); // null | { field, dir: 'asc'|'desc' }
   const [total, setTotal] = useState(null);   // из X-Total-Count; null → fallback назад/вперёд
   const [hasNext, setHasNext] = useState(false);
 
@@ -379,8 +393,10 @@ export default function App() {
   // актуальные applied/page в ref — чтобы автообновление всегда брало свежие значения
   const appliedRef = useRef(applied);
   const pageRef = useRef(page);
+  const sortRef = useRef(sort);
   useEffect(() => { appliedRef.current = applied; }, [applied]);
   useEffect(() => { pageRef.current = page; }, [page]);
+  useEffect(() => { sortRef.current = sort; }, [sort]);
   const busyRef = useRef(false);
   useEffect(() => { busyRef.current = busy; }, [busy]);
   const [autoRefreshing, setAutoRefreshing] = useState(false);
@@ -389,11 +405,11 @@ export default function App() {
 
   // Запрос страницы с авто-повтором: при «плавающих» сбоях бэкенда тихо повторяем
   // несколько раз с нарастающей паузой, прежде чем отдать ошибку наружу.
-  const fetchPage = useCallback(async (filter, pageIndex, retries = 3) => {
+  const fetchPage = useCallback(async (filter, pageIndex, srt, retries = 3) => {
     let lastErr;
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const res = await api.list(buildBody(filter, pageIndex));
+        const res = await api.list(buildBody(filter, pageIndex, srt));
         const data = Array.isArray(res?.data) ? res.data : [];
         const totalCount = typeof res?.total === 'number' && !isNaN(res.total) ? res.total : null;
         return { data, total: totalCount };
@@ -457,10 +473,10 @@ export default function App() {
     return () => { alive = false; };
   }, [fetchPage]);
 
-  const goToPage = useCallback(async (filter, pageIndex) => {
+  const goToPage = useCallback(async (filter, pageIndex, srt = sortRef.current) => {
     setBusy(true); setError(null);
     try {
-      const res = await fetchPage(filter, pageIndex);
+      const res = await fetchPage(filter, pageIndex, srt);
       setRows(res.data);
       setTotal(res.total);
       setPage(pageIndex);
@@ -473,8 +489,18 @@ export default function App() {
   }, [fetchPage]);
 
   const handleSearch = () => { setApplied(draft); goToPage(draft, 0); };
-  const handleReset = () => { setDraft(EMPTY_FILTER); setApplied(EMPTY_FILTER); goToPage(EMPTY_FILTER, 0); };
+  const handleReset = () => { setDraft(EMPTY_FILTER); setApplied(EMPTY_FILTER); setSort(null); goToPage(EMPTY_FILTER, 0, null); };
   const handlePage = (p) => { if (p < 0) return; goToPage(applied, p); };
+  // Клик по заголовку: возр. → убыв. → без сортировки (как в аппе users).
+  const toggleSort = (field) => {
+    let next;
+    if (!sort || sort.field !== field) next = { field, dir: 'asc' };
+    else if (sort.dir === 'asc') next = { field, dir: 'desc' };
+    else next = null;
+    setSort(next);
+    goToPage(applied, 0, next); // при смене сортировки — на первую страницу
+  };
+
   const handleRefresh = () => { goToPage(applied, page); }; // обновить текущую страницу с текущими фильтрами
 
   // Автообновление каждые 30 сек — тихо, текущая страница с применёнными фильтрами.
@@ -484,7 +510,7 @@ export default function App() {
       if (document.hidden || busyRef.current) return;
       setAutoRefreshing(true);
       try {
-        const res = await fetchPage(appliedRef.current, pageRef.current);
+        const res = await fetchPage(appliedRef.current, pageRef.current, sortRef.current);
         setRows(res.data);
         setTotal(res.total);
         setHasNext(res.data.length === PAGE_SIZE);
@@ -538,7 +564,7 @@ export default function App() {
                         </div>
                     ) : (
                         <>
-                          <HistoryTable rows={rows} />
+                          <HistoryTable rows={rows} sort={sort} onSort={toggleSort} />
                           <Pagination page={page} total={total} hasNext={hasNext} onPage={handlePage} busy={busy} />
                         </>
                     )}
