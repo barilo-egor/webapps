@@ -499,3 +499,47 @@ body {
   .filter-actions { flex-direction: column-reverse; }
   .filter-actions .btn { width: 100%; }
 }
+/* ============================================================
+   Сортировка по клику на заголовок таблицы.
+   Добавить в конец apps/merchant-histories/src/App.css
+   ============================================================ */
+
+/* Заголовок-кнопка: курсор, подсветка при наведении, защита от выделения
+   текста при быстрых повторных кликах. */
+.hcell.hhead.sortable {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background .15s, color .15s;
+}
+
+.hcell.hhead.sortable:hover {
+  background: var(--row-hover);
+}
+
+/* Активная колонка — заметнее остальных */
+.hcell.hhead.sortable.active {
+  color: var(--tg-text);
+  font-weight: 700;
+}
+
+/* Иконка направления */
+.sort-ico {
+  font-size: 10px;
+  margin-left: 4px;
+  vertical-align: baseline;
+}
+
+/* Неактивная колонка — иконка бледная, появляется ярче при наведении */
+.sort-ico.dim {
+  opacity: .35;
+}
+
+.hcell.hhead.sortable:hover .sort-ico.dim {
+  opacity: .7;
+}
+
+/* Выравнивание по правому краю (суммы) — иконка не должна ломать отступ */
+.hcell-right .sort-ico {
+  margin-left: 4px;
+}
