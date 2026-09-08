@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import UserProfile from '../../shared/UserProfile.jsx';
+import MessageEditor from '../../shared/MessageEditor.jsx';
 import {
   api, fullName, usernameOrHidden, fmtNum, fmtAmount,
 } from './api.js';
@@ -634,80 +635,26 @@ function TopTab({ showToast, onOpenProfile }) {
 }
 
 /* ==================== Вкладка «Сообщения» ==================== */
+/* Заголовок поля MessageEditor берёт из справочника бэка сам;
+   здесь задаём только подсказки о плейсхолдерах — их в справочнике нет.
+   Каждое сообщение сохраняется своей кнопкой. */
 const MESSAGES = [
-  { code: 'ROULETTE_DRAW_MESSAGE', title: 'Розыгрыш состоялся (рассылка всем)', hint: 'Плейсхолдеры: %1$s — номер рулетки, %2$s — список победителей' },
-  { code: 'ROULETTE_WINNER_MESSAGE', title: 'Личное оповещение победителю', hint: 'Плейсхолдеры: %1$s — номер, %2$s — место, %3$s — приз, %4$s — список победителей' },
-  { code: 'ROULETTE_CLOSED_MESSAGE', title: 'Рулетка закрыта (рассылка всем)', hint: 'Плейсхолдер: %1$s — лимит участников' },
-  { code: 'ROULETTE_NEW_MESSAGE', title: 'Старт новой рулетки (рассылка всем)', hint: 'Без плейсхолдеров' },
-  { code: 'ROULETTE_CURRENT_PARTICIPANT', title: 'Текущие участники рулетки', hint: 'Плейсхолдеры: %1$s — список участников, %2$s — сколько мест осталось' },
-  { code: 'ROULETTE_WINNERS_LIST', title: 'Список победителей (топ 20)', hint: 'Плейсхолдер: %1$s — топ участников' },
-  { code: 'ROULETTE_PARTICIPANT_ADD', title: 'Участник добавлен в рулетку', hint: 'Плейсхолдер: %1$s — номер участника. Допустимы HTML-теги, например <code>' },
+  { code: 'ROULETTE_DRAW_MESSAGE', hint: 'Плейсхолдеры: %1$s — номер рулетки, %2$s — список победителей' },
+  { code: 'ROULETTE_WINNER_MESSAGE', hint: 'Плейсхолдеры: %1$s — номер, %2$s — место, %3$s — приз, %4$s — список победителей' },
+  { code: 'ROULETTE_CLOSED_MESSAGE', hint: 'Плейсхолдер: %1$s — лимит участников' },
+  { code: 'ROULETTE_NEW_MESSAGE', hint: 'Без плейсхолдеров' },
+  { code: 'ROULETTE_CURRENT_PARTICIPANT', hint: 'Плейсхолдеры: %1$s — список участников, %2$s — сколько мест осталось' },
+  { code: 'ROULETTE_WINNERS_LIST', hint: 'Плейсхолдер: %1$s — топ участников' },
+  { code: 'ROULETTE_PARTICIPANT_ADD', hint: 'Плейсхолдер: %1$s — номер участника. Допустимы HTML-теги, например <code>' },
 ];
 
 function MessagesTab({ showToast }) {
-  const [vals, setVals] = useState({});      // code -> value
-  const [ids, setIds] = useState({});        // code -> id (для сохранения)
-  const [failed, setFailed] = useState([]);  // коды, которых нет на бэке
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      // allSettled, а не all: одно отсутствующее сообщение не должно ронять всю вкладку.
-      const res = await Promise.allSettled(MESSAGES.map((m) => api.getMessage(m.code)));
-      const v = {}, id = {}, bad = [];
-      res.forEach((r, i) => {
-        const c = MESSAGES[i].code;
-        if (r.status === 'fulfilled') {
-          v[c] = r.value?.value ?? '';
-          id[c] = r.value?.id ?? c;
-        } else {
-          v[c] = ''; id[c] = c; bad.push(c);
-        }
-      });
-      setVals(v); setIds(id); setFailed(bad); setLoading(false);
-      if (bad.length) showToast(`Не загрузились сообщения: ${bad.join(', ')}`, 'error');
-    })();
-  }, [showToast]);
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      // Незагруженные не отправляем — иначе затрём их пустой строкой.
-      const targets = MESSAGES.filter((m) => !failed.includes(m.code));
-      const res = await Promise.allSettled(targets.map((m) => api.saveMessage(ids[m.code], vals[m.code])));
-      const bad = targets.filter((_, i) => res[i].status === 'rejected').map((m) => m.title);
-      if (bad.length) showToast(`Не сохранены: ${bad.join('; ')}`, 'error');
-      else showToast('Сообщения сохранены', 'success');
-    } finally { setSaving(false); }
-  };
-
-  if (loading) return <div className="state"><i className="fa-solid fa-spinner fa-spin" /> Загрузка…</div>;
-
   return (
       <div className="tab-pane">
         <div className="msg-list">
-          {MESSAGES.map((m) => {
-            const missing = failed.includes(m.code);
-            return (
-                <div className="msg-item" key={m.code}>
-                  <label className="msg-title">{m.title}</label>
-                  <textarea rows={5} value={vals[m.code] ?? ''} disabled={missing}
-                            placeholder={missing ? '—' : ''}
-                            onChange={(e) => setVals((p) => ({ ...p, [m.code]: e.target.value }))} />
-                  {(missing || m.hint) && (
-                      <span className={`msg-hint ${missing ? 'msg-error' : ''}`}>
-                  {missing ? `Сообщение ${m.code} не найдено на бэке — редактирование недоступно` : m.hint}
-                </span>
-                  )}
-                </div>
-            );
-          })}
-        </div>
-        <div className="msg-foot">
-          <button className="btn btn-primary" onClick={save} disabled={saving}>
-            {saving ? '...' : 'Сохранить сообщения'}
-          </button>
+          {MESSAGES.map((m) => (
+              <MessageEditor key={m.code} code={m.code} hint={m.hint} showToast={showToast} />
+          ))}
         </div>
       </div>
   );

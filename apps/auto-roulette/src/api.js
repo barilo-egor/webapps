@@ -16,7 +16,8 @@
      GET    /api/auto-roulette/winners              -> [{user, totalAmount, winCount}]  (ТОП за всё время)
      POST   /api/auto-roulette/history              <- {page,size, rouletteNumber?, winnerChatId?, rouletteDrawnAt?, rouletteDrawnTo?}
                                                     -> [{autoRouletteDTO:{roundNo,drawnAt,prizes}, winners:[{user,prizeAmount,winnerPlace}]}]
-   Сообщения (рассылки): GET /api/messages/{CODE}, PUT /api/messages {id, value}
+   Сообщения: вкладка использует общий ../../shared/MessageEditor.jsx
+   (API /api/message_image), поэтому здесь их нет.
    Автостарт: переменная ROULETTE_AUTOSTART в /api/variables
    ============================================================ */
 
@@ -53,11 +54,6 @@ export const api = {
     // --- История победителей ---
     history: (body) =>
         request(`${API}/history`, { method: 'POST', body, withTotal: true }),
-
-    // --- Сообщения (рассылки) ---
-    getMessage: (code) => request(`/api/messages/${encodeURIComponent(code)}`),
-    saveMessage: (id, value) =>
-        request('/api/messages', { method: 'PUT', body: { id, value } }),
 
     // --- Автостарт (переменная ROULETTE_AUTOSTART) ---
     // Переменные приходят как {variableType, value, ...}; value — строка "true"/"false".
