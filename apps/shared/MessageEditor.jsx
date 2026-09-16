@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { request } from './request.js';
+
 /* ============================================================
    Общий компонент редактирования сообщения бота.
 
@@ -33,12 +34,11 @@ const API = '/api/message_image';
 // Форматы, которые принимает бэк (подтверждено бэкендом).
 const ALLOWED = ['.jpg', '.jpeg', '.png', '.gif', '.mp4'];
 
-/* Ограничение размера файла.
-   На dev nginx отдаёт 413 примерно на 1 МБ (561 КБ проходит, 1.09 МБ нет),
-   на проде лимит больше. Проверяем на фронте, чтобы админ видел понятное
-   сообщение вместо HTML-страницы ошибки от nginx.
-   Точное значение уточняется у бэкенда — менять здесь. */
-const MAX_FILE_BYTES = 1024 * 1024;
+/* Ограничение размера файла — 10 МБ (лимит бэкенда, подтверждён Егором:
+   10 МБ на файл, 11 МБ на весь запрос вместе с заголовками).
+   Проверяем на фронте, чтобы админ видел понятное сообщение, а не
+   HTML-страницу ошибки от nginx. */
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 // Формат файла -> часть адреса, по которой он отдаётся.
 const PATH_BY_FORMAT = {
@@ -53,23 +53,23 @@ let dictPromise = null;
 function loadDictionary() {
   if (!dictPromise) {
     dictPromise = request(API)
-      .then((r) => (Array.isArray(r?.data) ? r.data : []))
-      .catch(() => []); // без справочника просто покажем код
+        .then((r) => (Array.isArray(r?.data) ? r.data : []))
+        .catch(() => []); // без справочника просто покажем код
   }
   return dictPromise;
 }
 
 export default function MessageEditor({
-  code,
-  title,           // если не передать — возьмётся из справочника
-  hint,            // подсказка про плейсхолдеры (в справочнике её нет)
-  showToast,
-  withFile = true, // показывать блок с изображением/видео
-  value,           // управляемый режим: текст хранит апп
-  onChange,        // управляемый режим: сообщить аппу об изменении
-  onLoaded,        // вызовется с загруженным текстом
-  onSaved,         // вызовется с сохранённым текстом (апп может следить за содержимым)
-}) {
+                                        code,
+                                        title,           // если не передать — возьмётся из справочника
+                                        hint,            // подсказка про плейсхолдеры (в справочнике её нет)
+                                        showToast,
+                                        withFile = true, // показывать блок с изображением/видео
+                                        value,           // управляемый режим: текст хранит апп
+                                        onChange,        // управляемый режим: сообщить аппу об изменении
+                                        onLoaded,        // вызовется с загруженным текстом
+                                        onSaved,         // вызовется с сохранённым текстом (апп может следить за содержимым)
+                                      }) {
   const controlled = typeof onChange === 'function';
 
   const [dictTitle, setDictTitle] = useState('');
@@ -107,21 +107,21 @@ export default function MessageEditor({
     let alive = true;
     setLoading(true);
     request(`${API}/text/${encodeURIComponent(code)}`)
-      .then((r) => {
-        if (!alive) return;
-        const v = r?.data ?? '';
-        setText(v);
-        setInitial(v);
-        setMissing(false);
-        onLoaded?.(v);
-        if (controlled) onChange(v);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setMissing(true);
-        notify(`Не удалось загрузить сообщение ${code}`, 'error');
-      })
-      .finally(() => { if (alive) setLoading(false); });
+        .then((r) => {
+          if (!alive) return;
+          const v = r?.data ?? '';
+          setText(v);
+          setInitial(v);
+          setMissing(false);
+          onLoaded?.(v);
+          if (controlled) onChange(v);
+        })
+        .catch(() => {
+          if (!alive) return;
+          setMissing(true);
+          notify(`Не удалось загрузить сообщение ${code}`, 'error');
+        })
+        .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
     // onChange/onLoaded специально не в зависимостях: апп часто передаёт
     // новую функцию на каждый рендер, и текст перезагружался бы бесконечно.
@@ -230,83 +230,83 @@ export default function MessageEditor({
 
   if (loading) {
     return (
-      <div className="msged">
-        <div className="msged-title">{heading}</div>
-        <div className="msged-skeleton" />
-      </div>
+        <div className="msged">
+          <div className="msged-title">{heading}</div>
+          <div className="msged-skeleton" />
+        </div>
     );
   }
 
   return (
-    <div className="msged">
-      <div className="msged-title">{heading}</div>
+      <div className="msged">
+        <div className="msged-title">{heading}</div>
 
-      <textarea
-        className="msged-text"
-        rows={6}
-        value={current}
-        disabled={missing}
-        placeholder={missing ? '—' : ''}
-        onChange={(e) => setValue(e.target.value)}
-      />
+        <textarea
+            className="msged-text"
+            rows={6}
+            value={current}
+            disabled={missing}
+            placeholder={missing ? '—' : ''}
+            onChange={(e) => setValue(e.target.value)}
+        />
 
-      {missing ? (
-        <span className="msged-hint msged-error">
+        {missing ? (
+            <span className="msged-hint msged-error">
           Сообщение {code} не найдено на бэкенде — редактирование недоступно
         </span>
-      ) : hint ? (
-        <span className="msged-hint">{hint}</span>
-      ) : null}
+        ) : hint ? (
+            <span className="msged-hint">{hint}</span>
+        ) : null}
 
-      {withFile && !missing && (
-        <div className="msged-file">
-          <div className="msged-file-head">
+        {withFile && !missing && (
+            <div className="msged-file">
+              <div className="msged-file-head">
             <span className="msged-file-label">
               <i className="fa-regular fa-image" /> Вложение
             </span>
-            <span className="msged-file-state">
+                <span className="msged-file-state">
               {format ? format.replace('.', '').toUpperCase() : 'нет файла'}
             </span>
-          </div>
+              </div>
 
-          {fileUrl && (
-            <div className="msged-preview">
-              {isVideo(format)
-                ? <video src={fileUrl} controls preload="metadata" />
-                : <img src={fileUrl} alt="Вложение сообщения" />}
+              {fileUrl && (
+                  <div className="msged-preview">
+                    {isVideo(format)
+                        ? <video src={fileUrl} controls preload="metadata" />
+                        : <img src={fileUrl} alt="Вложение сообщения" />}
+                  </div>
+              )}
+
+              <div className="msged-file-actions">
+                <button type="button" className="msged-btn" onClick={pickFile} disabled={fileBusy}>
+                  <i className={`fa-solid ${fileBusy ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
+                  {format ? ' Заменить' : ' Загрузить'}
+                </button>
+                {format && (
+                    <button type="button" className="msged-btn msged-btn-danger" onClick={removeFile} disabled={fileBusy}>
+                      <i className="fa-solid fa-trash" /> Удалить
+                    </button>
+                )}
+                <input
+                    ref={inputRef} type="file" hidden
+                    accept=".jpg,.jpeg,.png,.gif,.mp4"
+                    onChange={onFilePicked}
+                />
+              </div>
+
+              {fileError && <span className="msged-hint msged-error">{fileError}</span>}
             </div>
-          )}
+        )}
 
-          <div className="msged-file-actions">
-            <button type="button" className="msged-btn" onClick={pickFile} disabled={fileBusy}>
-              <i className={`fa-solid ${fileBusy ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
-              {format ? ' Заменить' : ' Загрузить'}
-            </button>
-            {format && (
-              <button type="button" className="msged-btn msged-btn-danger" onClick={removeFile} disabled={fileBusy}>
-                <i className="fa-solid fa-trash" /> Удалить
+        {!controlled && !missing && (
+            <div className="msged-foot">
+              <button type="button" className="msged-btn msged-btn-primary" onClick={save} disabled={saving || !dirty}>
+                <i className={`fa-solid ${saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`} />
+                {saving ? ' Сохранение…' : ' Сохранить'}
               </button>
-            )}
-            <input
-              ref={inputRef} type="file" hidden
-              accept=".jpg,.jpeg,.png,.gif,.mp4"
-              onChange={onFilePicked}
-            />
-          </div>
-
-          {fileError && <span className="msged-hint msged-error">{fileError}</span>}
-        </div>
-      )}
-
-      {!controlled && !missing && (
-        <div className="msged-foot">
-          <button type="button" className="msged-btn msged-btn-primary" onClick={save} disabled={saving || !dirty}>
-            <i className={`fa-solid ${saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`} />
-            {saving ? ' Сохранение…' : ' Сохранить'}
-          </button>
-        </div>
-      )}
-    </div>
+            </div>
+        )}
+      </div>
   );
 }
 
