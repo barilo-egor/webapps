@@ -21,6 +21,9 @@ const apiFetch = async (url, options = {}) => {
   try { return JSON.parse(text); } catch { return text; }
 };
 
+// Пользователей на странице в блоке «Пользователи».
+const USERS_PAGE_SIZE = 25;
+
 const realApi = {
   // GET /api/ad-links -> { adLinks:[{id,code,comment?}], bot }
   list: () => apiFetch('/api/ad-links'),
@@ -31,12 +34,17 @@ const realApi = {
       apiFetch(`/api/ad-links/${id}`, { method: 'PATCH', body: JSON.stringify({ comment }) }),
   // GET /api/ad-links/{id}/statistic?dealsCount=N&dayActivity=N
   //     &maxDealsCount=N&comparisonOperator=EQUALS|GREATER_THAN|LESS_THAN|RANGE
+  //     &page=N&size=N — страница списка пользователей
   statistic: (id, params = {}) => {
     const qs = new URLSearchParams();
     if (params.dealsCount != null && params.dealsCount !== '') qs.set('dealsCount', params.dealsCount);
     if (params.maxDealsCount != null && params.maxDealsCount !== '') qs.set('maxDealsCount', params.maxDealsCount);
     if (params.comparisonOperator) qs.set('comparisonOperator', params.comparisonOperator);
     if (params.dayActivity != null && params.dayActivity !== '') qs.set('dayActivity', params.dayActivity);
+    // Постраничная выдача списка пользователей. Остальные счётчики
+    // от этих параметров не зависят.
+    if (params.page != null) qs.set('page', params.page);
+    if (params.size != null) qs.set('size', params.size);
     const q = qs.toString();
     return apiFetch(`/api/ad-links/${id}/statistic${q ? '?' + q : ''}`);
   },
@@ -348,6 +356,41 @@ function VolumeTable({ users, referrals, total }) {
   );
 }
 
+// Пагинация списка пользователей: страницы считаем от общего
+// количества (adUsersCount), бэк отдаёт их по USERS_PAGE_SIZE.
+function UsersPager({ page, total, busy, onPage }) {
+  const pages = Math.max(1, Math.ceil((total || 0) / USERS_PAGE_SIZE));
+  if (pages <= 1) return null;
+
+  const from = page * USERS_PAGE_SIZE + 1;
+  const to = Math.min((page + 1) * USERS_PAGE_SIZE, total);
+
+  return (
+      <div className="upager">
+        <span className="upager-info">{from}–{to} из {total}</span>
+        <div className="upager-controls">
+          <button type="button" className="pg-btn" disabled={busy || page === 0}
+                  onClick={() => onPage(0)} title="В начало">
+            <i className="fas fa-angles-left"></i>
+          </button>
+          <button type="button" className="pg-btn" disabled={busy || page === 0}
+                  onClick={() => onPage(page - 1)} title="Назад">
+            <i className="fas fa-angle-left"></i>
+          </button>
+          <span className="pg-current mono">{page + 1} / {pages}</span>
+          <button type="button" className="pg-btn" disabled={busy || page >= pages - 1}
+                  onClick={() => onPage(page + 1)} title="Вперёд">
+            <i className="fas fa-angle-right"></i>
+          </button>
+          <button type="button" className="pg-btn" disabled={busy || page >= pages - 1}
+                  onClick={() => onPage(pages - 1)} title="В конец">
+            <i className="fas fa-angles-right"></i>
+          </button>
+        </div>
+      </div>
+  );
+}
+
 function StatsScreen({ link, bot, onBack, showToast }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -359,6 +402,8 @@ function StatsScreen({ link, bot, onBack, showToast }) {
   const [byDealBusy, setByDealBusy] = useState(false);
   const [byActBusy, setByActBusy] = useState(false);
   const [profileChatId, setProfileChatId] = useState(null); // открытый профиль пользователя
+  const [usersPage, setUsersPage] = useState(0);   // страница списка пользователей
+  const [usersBusy, setUsersBusy] = useState(false);
 
   // Параметры фильтра по количеству сделок для запроса статистики.
   const dealsParams = () => (
@@ -380,9 +425,10 @@ function StatsScreen({ link, bot, onBack, showToast }) {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      // Полные данные (верхние счётчики, оборот, пользователи) — БЕЗ параметров:
-      // бэк применяет dealsCount/dayActivity ко всему ответу, поэтому их тут не шлём.
-      const full = await api.statistic(link.id);
+      // Полные данные (верхние счётчики, оборот, пользователи) — без
+      // dealsCount/dayActivity: бэк применяет их ко всему ответу.
+      // page/size влияют только на список пользователей, их шлём.
+      const full = await api.statistic(link.id, { page: 0, size: USERS_PAGE_SIZE });
       let byDeal = full.adLinkStatisticByDeal;
       let byAct = full.adLinkStatisticByActivity;
       // Блоки «по N» считаем отдельными запросами. Бэк может вернуть под-объект напрямую.
@@ -400,7 +446,23 @@ function StatsScreen({ link, bot, onBack, showToast }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [link.id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); setUsersPage(0); }, [load]);
+
+  /* Список пользователей листается отдельно: счётчики и обороты
+     при этом не перезапрашиваем, меняется только adUsers. */
+  const goUsersPage = async (page) => {
+    if (page === usersPage || usersBusy) return;
+    setUsersBusy(true);
+    try {
+      const s = await api.statistic(link.id, { page, size: USERS_PAGE_SIZE });
+      setStats((prev) => ({ ...prev, adUsers: s?.adUsers || [] }));
+      setUsersPage(page);
+    } catch {
+      showToast('error', 'Не удалось загрузить страницу');
+    } finally {
+      setUsersBusy(false);
+    }
+  };
 
   const recalcDeals = async () => {
     setByDealBusy(true);
@@ -533,6 +595,17 @@ function StatsScreen({ link, bot, onBack, showToast }) {
                       ))}
                     </div>
                   </div>
+
+                  {(stats.adUsers || []).length === 0 && !usersBusy && (
+                      <div className="state state-empty"><i className="fas fa-users-slash"></i><span>Пользователей нет</span></div>
+                  )}
+
+                  <UsersPager
+                      page={usersPage}
+                      total={stats.adUsersCount ?? 0}
+                      busy={usersBusy}
+                      onPage={goUsersPage}
+                  />
                 </StatGroup>
               </div>
             </div>

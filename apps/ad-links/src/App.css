@@ -205,6 +205,29 @@ body {
 .uname { color: var(--tg-link); }
 .mono { font-variant-numeric: tabular-nums; }
 
+/* пагинация списка пользователей */
+.upager {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-size: 13px; color: var(--tg-hint);
+}
+.upager-info { font-variant-numeric: tabular-nums; }
+.upager-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.pg-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 32px; height: 32px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--tg-secondary-bg); color: var(--tg-text);
+  font-family: inherit; font-size: 13px; cursor: pointer;
+  transition: background .15s, opacity .15s;
+}
+.pg-btn:not(:disabled):hover { background: var(--row-hover); }
+.pg-btn:disabled { opacity: .4; cursor: default; }
+.pg-current {
+  font-weight: 700; color: var(--tg-text); padding: 0 8px;
+  min-width: 52px; text-align: center;
+}
+
 /* ===================== TOAST ===================== */
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
