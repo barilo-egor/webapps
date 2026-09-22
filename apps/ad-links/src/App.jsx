@@ -360,29 +360,26 @@ function VolumeTable({ users, referrals, total }) {
 // количества (adUsersCount), бэк отдаёт их по USERS_PAGE_SIZE.
 function UsersPager({ page, total, busy, onPage }) {
   const pages = Math.max(1, Math.ceil((total || 0) / USERS_PAGE_SIZE));
-  if (pages <= 1) return null;
-
-  const from = page * USERS_PAGE_SIZE + 1;
-  const to = Math.min((page + 1) * USERS_PAGE_SIZE, total);
+  const single = pages <= 1;   // листать нечего — кнопки гаснут
 
   return (
       <div className="upager">
-        <span className="upager-info">{from}–{to} из {total}</span>
+        <span className="upager-info">Всего пользователей: {total || 0}</span>
         <div className="upager-controls">
-          <button type="button" className="pg-btn" disabled={busy || page === 0}
+          <button type="button" className="pg-btn" disabled={busy || single || page === 0}
                   onClick={() => onPage(0)} title="В начало">
             <i className="fas fa-angles-left"></i>
           </button>
-          <button type="button" className="pg-btn" disabled={busy || page === 0}
+          <button type="button" className="pg-btn" disabled={busy || single || page === 0}
                   onClick={() => onPage(page - 1)} title="Назад">
             <i className="fas fa-angle-left"></i>
           </button>
           <span className="pg-current mono">{page + 1} / {pages}</span>
-          <button type="button" className="pg-btn" disabled={busy || page >= pages - 1}
+          <button type="button" className="pg-btn" disabled={busy || single || page >= pages - 1}
                   onClick={() => onPage(page + 1)} title="Вперёд">
             <i className="fas fa-angle-right"></i>
           </button>
-          <button type="button" className="pg-btn" disabled={busy || page >= pages - 1}
+          <button type="button" className="pg-btn" disabled={busy || single || page >= pages - 1}
                   onClick={() => onPage(pages - 1)} title="В конец">
             <i className="fas fa-angles-right"></i>
           </button>
