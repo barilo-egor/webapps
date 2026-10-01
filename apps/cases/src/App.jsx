@@ -32,6 +32,10 @@ const VARIABLE_KEYS = [
 // Плейсхолдер, который обязан быть в названии кнопки кейса.
 const NAME_PLACEHOLDER = '{номер кейса}';
 
+// Название кейса по умолчанию — подставляется, если на бэке оно ещё не задано.
+// Записано ровно как в ТЗ: без пробела перед «№».
+const DEFAULT_CASE_NAME = `🏅 Кейс№${NAME_PLACEHOLDER}`;
+
 const GENERAL_FIELDS = [
   {
     id: 'CASES_COUNT', kind: 'int', label: 'Количество кейсов',
@@ -87,7 +91,8 @@ const EMPTY_WIN_FILTER = {
 
 /* ---------------- Общее ---------------- */
 
-const toBool = (v) => v === true || v === 'true' || v === 1 || v === '1';
+// Флаг с бэка может прийти булевым, числом или строкой в любом регистре.
+const toBool = (v) => v === true || v === 1 || ['true', '1'].includes(String(v ?? '').trim().toLowerCase());
 const toStr = (v) => (v == null ? '' : String(v));
 
 // Целое строго больше нуля.
@@ -175,10 +180,16 @@ export default function App() {
           .filter((v) => VARIABLE_KEYS.includes(v.variableType ?? v.type ?? v.id))
           .forEach((v) => { map[v.variableType ?? v.type ?? v.id] = v.value; });
 
-      const nextGeneral = {
+      const savedValues = {
         CASES_COUNT: toStr(map.CASES_COUNT),
         CASE_NAME_TEMPLATE: toStr(map.CASE_NAME_TEMPLATE),
         CASES_ANIMATION_SECONDS: toStr(map.CASES_ANIMATION_SECONDS),
+      };
+      // Пустое название сразу заполняем значением по умолчанию. В «сохранённых»
+      // остаётся пустое — поэтому по кнопке «Сохранить» оно уйдёт на бэк.
+      const nextGeneral = {
+        ...savedValues,
+        CASE_NAME_TEMPLATE: savedValues.CASE_NAME_TEMPLATE.trim() || DEFAULT_CASE_NAME,
       };
       // Шансы приходят строкой «60;15;10;8;5;2» в порядке сумм.
       const parts = toStr(map.CASES_PRIZE_CHANCES).split(';');
@@ -188,7 +199,7 @@ export default function App() {
       setEnabled(toBool(map.CASES_ENABLED));
       setSavedEnabled(toBool(map.CASES_ENABLED));
       setGeneral(nextGeneral);
-      setSavedGeneral(nextGeneral);
+      setSavedGeneral(savedValues);
       setChances(nextChances);
       setSavedChances(nextChances);
       setTouched({});
@@ -297,9 +308,25 @@ export default function App() {
     }
   };
 
+  /* Попытка включить кейсы, пока настройки не заполнены: заблокированный
+     тумблер сам клик не получает, поэтому ловим его на обёртке и
+     подсвечиваем подсказку красным. */
+  const [toggleAttempt, setToggleAttempt] = useState(false);
+  const toggleLocked = !enabled && !canEnable;
+
+  // Настройки заполнили — красная подсветка больше не нужна.
+  useEffect(() => { if (canEnable) setToggleAttempt(false); }, [canEnable]);
+
   const onToggle = () => {
-    if (!enabled && !canEnable) return;
+    if (toggleLocked) return;
     setEnabled((v) => !v);
+  };
+
+  const onLockedClick = () => {
+    if (!toggleLocked) return;
+    // Снимаем и снова ставим класс, чтобы анимация срабатывала на каждый клик.
+    setToggleAttempt(false);
+    window.requestAnimationFrame(() => setToggleAttempt(true));
   };
 
   /* ---- состояния ---- */
@@ -357,19 +384,27 @@ export default function App() {
               <div className="card rows">
                 <div className="row">
                   <span className="row-label">{labelOf('CASES_ENABLED', 'Кейсы включены')}</span>
-                  <label className={`switch${!enabled && !canEnable ? ' disabled' : ''}`}>
-                    <input
-                        type="checkbox"
-                        checked={enabled}
-                        disabled={!enabled && !canEnable}
-                        onChange={onToggle}
-                    />
-                    <span className="track" />
-                    <span className="thumb" />
-                  </label>
+                  {/* Обёртка ловит клик по заблокированному тумблеру */}
+                  <span className="switch-wrap" onClick={onLockedClick}>
+                    <span className={`switch-state${enabled ? ' on' : ''}`}>
+                      {enabled ? 'Вкл' : 'Выкл'}
+                    </span>
+                    <label className={`switch${toggleLocked ? ' disabled' : ''}`}>
+                      <input
+                          type="checkbox"
+                          checked={enabled}
+                          disabled={toggleLocked}
+                          onChange={onToggle}
+                      />
+                      <span className="track" />
+                      <span className="thumb" />
+                    </label>
+                  </span>
                 </div>
-                {!enabled && !canEnable && (
-                    <div className="row-note">Заполните настройки на вкладках «Общие» и «Призы»</div>
+                {toggleLocked && (
+                    <div className={`row-note${toggleAttempt ? ' attention' : ''}`}>
+                      Заполните настройки на вкладках «Общие» и «Призы»
+                    </div>
                 )}
 
                 {GENERAL_FIELDS.map((fld) => (
@@ -605,12 +640,28 @@ function WinnersTab({ showToast }) {
   const statusLabel = (name) =>
       statuses.find((s) => s.name === name)?.description || name || '—';
 
+  /* Код статуса выигрыша. Бэк в строке отдаёт только подпись —
+     { description: "Зачислен реф. баланс" }, без name. Поэтому, если
+     кода нет, находим его по подписи в словаре /api/cases/statuses.
+     Как только бэк начнёт отдавать name, он возьмётся напрямую. */
+  const statusNameOf = (c) => {
+    const st = c?.status;
+    if (!st) return '';
+    if (typeof st === 'string') return st;
+    if (st.name) return st.name;
+    const byDesc = statuses.find(
+        (s) => String(s.description).trim().toLowerCase() === String(st.description || '').trim().toLowerCase(),
+    );
+    return byDesc?.name || '';
+  };
+
   // Строки, у которых статус изменён в списке, но ещё не сохранён.
   const changed = useMemo(
       () => rows
           .map((r) => r.cases)
-          .filter((c) => edits[c.id] && edits[c.id] !== c.status?.name),
-      [rows, edits],
+          .filter((c) => edits[c.id] && edits[c.id] !== statusNameOf(c)),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [rows, edits, statuses],
   );
 
   const applyStatuses = async () => {
@@ -744,7 +795,8 @@ function WinnersTab({ showToast }) {
               {rows.map((r) => {
                 const c = r.cases || {};
                 const u = r.user || {};
-                const value = edits[c.id] ?? c.status?.name ?? '';
+                const current = statusNameOf(c);
+                const value = edits[c.id] ?? current;
                 return (
                     <tr key={c.id}>
                       <td className="mono">{c.id}</td>
@@ -759,6 +811,10 @@ function WinnersTab({ showToast }) {
                             value={value}
                             onChange={(e) => setEdits((p) => ({ ...p, [c.id]: e.target.value }))}
                         >
+                          {/* Код не распознан — показываем подпись с бэка, а не первый пункт списка */}
+                          {!value && (
+                              <option value="" disabled>{c.status?.description || '—'}</option>
+                          )}
                           {statuses.map((s) => (
                               <option key={s.name} value={s.name}>{s.description}</option>
                           ))}
@@ -824,7 +880,9 @@ function WinnersTab({ showToast }) {
                   <ul className="changes">
                     {changed.map((c) => (
                         <li key={c.id}>
-                          №{c.id} — {statusLabel(c.status?.name)} → {statusLabel(edits[c.id])}
+                          №{c.id} — {statusLabel(statusNameOf(c)) !== '—'
+                            ? statusLabel(statusNameOf(c))
+                            : (c.status?.description || '—')} → {statusLabel(edits[c.id])}
                         </li>
                     ))}
                   </ul>

@@ -581,7 +581,7 @@ input[type='date']::-webkit-calendar-picker-indicator {
   /* Иконка календаря по умолчанию тёмная и теряется на тёмном фоне */
   filter: invert(0.7);
   cursor: pointer;
-}e
+}
 
 /* ===================== Таблица выигрышей ===================== */
 .wins-wrap {
@@ -764,4 +764,82 @@ table.wins td.c-right {
   justify-content: flex-end;
   gap: 10px;
   padding: 14px 16px 16px;
+}
+
+/* ===================== Тумблер «Кейсы включены» ===================== */
+/* Выключенное состояние должно читаться явно: контурная дорожка,
+   серый бегунок и подпись «Выкл» рядом. Включённое — зелёная
+   дорожка, белый бегунок, подпись «Вкл». */
+.switch-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.switch-state {
+  min-width: 34px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tg-hint);
+}
+
+.switch-state.on {
+  color: var(--tg-success);
+}
+
+.switch .track {
+  background: transparent;
+  border: 2px solid var(--tg-hint);
+}
+
+.switch .thumb {
+  top: 5px;
+  left: 5px;
+  width: calc(var(--h) - 10px);
+  height: calc(var(--h) - 10px);
+  background: var(--tg-hint);
+}
+
+.switch input:checked + .track {
+  background: var(--tg-success);
+  border-color: var(--tg-success);
+}
+
+.switch input:checked + .track + .thumb,
+.switch input:checked ~ .thumb {
+  background: #fff;
+}
+
+/* Заблокированный — пунктирная рамка вместо полупрозрачности,
+   чтобы не сливался с фоном */
+.switch.disabled {
+  opacity: 1;
+}
+
+.switch.disabled .track {
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.switch.disabled .thumb {
+  opacity: 0.6;
+}
+
+/* Подсказка после попытки включить заблокированный тумблер */
+.row-note.attention {
+  color: var(--tg-danger);
+  font-weight: 600;
+  animation: note-shake 0.35s ease-in-out;
+}
+
+@keyframes note-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-note.attention { animation: none; }
 }
