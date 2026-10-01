@@ -17,6 +17,14 @@
      nullOn404   — 404 считать штатным «нет данных», а не ошибкой
      withTotal   — вернуть {items, total} из X-Total-Count вместо массива
      raw         — вернуть объект Response как есть (для файлов/blob)
+
+   Перенаправления (302) не выполняются: бэк отвечает ими, когда не
+   принял авторизацию, и уводит на страницу входа. Если пойти следом,
+   браузер получит HTML этой страницы со статусом 200, и запрос
+   выглядел бы успешным — например, «Настройки сохранены», хотя ничего
+   не сохранилось. Поэтому и перенаправление, и HTML вместо данных
+   считаются ошибкой. Исключение — raw (файлы): их перенаправление
+   выполняется как обычно.
    ============================================================ */
 
 const BOT_STORAGE_KEY = 'botUsername';
@@ -69,12 +77,20 @@ export async function request(url, options = {}) {
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
 
   const res = await fetch(buildUrl(url, params), {
+    // Не идём по перенаправлению — см. примечание в шапке файла.
+    // Файлы (raw) — исключение: их бэк вправе отдавать через перенаправление.
+    redirect: raw ? 'follow' : 'manual',
     ...rest,
     headers: buildHeaders(headers, isForm),
     ...(body !== undefined
-      ? { body: isForm || typeof body === 'string' ? body : JSON.stringify(body) }
-      : {}),
+        ? { body: isForm || typeof body === 'string' ? body : JSON.stringify(body) }
+        : {}),
   });
+
+  // Бэк перенаправил на страницу входа — запрос не выполнен.
+  if (!raw && (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400))) {
+    throw authError(res.status || 302);
+  }
 
   // Штатное «данных нет» (напр. активной рулетки не существует).
   if (nullOn404 && res.status === 404) {
@@ -92,14 +108,20 @@ export async function request(url, options = {}) {
   }
 
   const ct = res.headers.get('content-type') || '';
-  const data = ct.includes('application/json')
-    ? await res.json().catch(() => null)
-    : await res.text().catch(() => null);
+
+  // HTML вместо данных — почти наверняка та же страница входа (например,
+  // если перенаправление выполнил прокси). Успехом это не считаем.
+  if (ct.includes('text/html')) throw authError(res.status);
+
+  // application/json и application/problem+json — оба JSON.
+  const data = ct.includes('json')
+      ? await res.json().catch(() => null)
+      : await res.text().catch(() => null);
 
   if (!res.ok) {
     // Бэк присылает ошибки как {"error":"текст"} — показываем текст пользователю.
-    const msg = (data && typeof data === 'object' && (data.error || data.message))
-      || `Ошибка ${res.status}`;
+    const msg = (data && typeof data === 'object' && (data.error || data.message || data.description))
+        || `Ошибка ${res.status}`;
     const err = new Error(msg);
     err.status = res.status;
     throw err;
@@ -111,6 +133,15 @@ export async function request(url, options = {}) {
   const rawTotal = res.headers.get('X-Total-Count');
   const total = rawTotal != null && rawTotal !== '' ? parseInt(rawTotal, 10) : items.length;
   return { items, total: Number.isFinite(total) ? total : items.length };
+}
+
+/* Ошибка «сервер не принял авторизацию». Отдельный текст, чтобы было
+   понятно: дело не в введённых данных, а в доступе. */
+function authError(status) {
+  const err = new Error('Нет доступа: сервер не принял авторизацию. Откройте веб-апп заново из бота');
+  err.status = status;
+  err.unauthorized = true;
+  return err;
 }
 
 // chatId текущего оператора (для аудита/будущих действий).
