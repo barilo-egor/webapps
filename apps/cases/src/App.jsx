@@ -106,11 +106,16 @@ const isPositiveInt = (v) => /^\d+$/.test(String(v).trim()) && Number(v) > 0;
 
 const fmtMoney = (v) => `${Number(v || 0).toLocaleString('ru-RU')} ₽`;
 
-/* Дата из <input type="date"> в формат, который принимает бэк.
-   Пример из коллекции: 2026-09-20T05:00 — без зоны. */
+/* Дата из <input type="date"> в границу дня для бэка — в миллисекундах
+   (Unix epoch ms, договорились с бэком). Границы дня берутся по местному
+   времени админа; getTime() сам переводит их в абсолютный момент. */
 function dayBound(value, edge) {
   if (!value) return '';
-  return `${value}T${edge === 'end' ? '23:59:59' : '00:00:00'}`;
+  const [y, m, d] = value.split('-').map(Number);
+  const local = edge === 'end'
+      ? new Date(y, m - 1, d, 23, 59, 59, 999)
+      : new Date(y, m - 1, d, 0, 0, 0, 0);
+  return local.getTime();
 }
 
 const api = {
@@ -591,6 +596,25 @@ function MessagesTab({ showToast }) {
 
 /* ==================== Вкладка «Выигрыши» ==================== */
 
+/* Дата выигрыша → { date, time } для таблицы. Бэк переходит на миллисекунды,
+   а раньше отдавал готовую строку «02.10.2026 15:01:51» — понимаем оба вида. */
+function winDate(v) {
+  if (v == null || v === '') return { date: '—', time: '' };
+  const isMs = typeof v === 'number' || /^\d{11,}$/.test(String(v));
+  const isIso = !isMs && /^\d{4}-\d{2}-\d{2}T/.test(String(v));
+  if (isMs || isIso) {
+    const d = new Date(isMs ? Number(v) : v);
+    if (Number.isNaN(d.getTime())) return { date: String(v), time: '' };
+    const p = (n) => String(n).padStart(2, '0');
+    return {
+      date: `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`,
+      time: `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`,
+    };
+  }
+  const [date, time = ''] = String(v).split(' ');
+  return { date, time };
+}
+
 function WinnersTab({ showToast }) {
   const [statuses, setStatuses] = useState([]);
   const [draft, setDraft] = useState(EMPTY_WIN_FILTER);
@@ -625,12 +649,12 @@ function WinnersTab({ showToast }) {
 
       if (filter.dateMode === 'eq') {
         if (filter.dateEq) {
-          body.drawnAt = dayBound(filter.dateEq, 'start');
-          body.drawnTo = dayBound(filter.dateEq, 'end');
+          body.createdAt = dayBound(filter.dateEq, 'start');
+          body.createdTo = dayBound(filter.dateEq, 'end');
         }
       } else {
-        if (filter.dateFrom) body.drawnAt = dayBound(filter.dateFrom, 'start');
-        if (filter.dateTo) body.drawnTo = dayBound(filter.dateTo, 'end');
+        if (filter.dateFrom) body.createdAt = dayBound(filter.dateFrom, 'start');
+        if (filter.dateTo) body.createdTo = dayBound(filter.dateTo, 'end');
       }
 
       const r = await api.winners(body);
@@ -815,13 +839,10 @@ function WinnersTab({ showToast }) {
                 return (
                     <tr key={c.id}>
                       <td className="mono">{c.id}</td>
-                      {/* Дата и время в две строки: апп узкий (до 620px), иначе
-                          колонке «Статус» не хватает места и подпись обрезается. */}
+                      {/* Дата и время в две строки: иначе колонке «Статус» не хватает места. */}
                       <td className="mono nowrap win-date">
-                        {String(c.createdAt || '—').split(' ')[0]}
-                        {String(c.createdAt || '').split(' ')[1] && (
-                            <span className="win-time">{String(c.createdAt).split(' ')[1]}</span>
-                        )}
+                        {winDate(c.createdAt).date}
+                        {winDate(c.createdAt).time && <span className="win-time">{winDate(c.createdAt).time}</span>}
                       </td>
                       <td className="mono">{u.chatId ?? '—'}</td>
                       <td>{u.username ? `@${u.username}` : '—'}</td>
