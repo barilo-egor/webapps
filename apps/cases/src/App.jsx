@@ -649,12 +649,12 @@ function WinnersTab({ showToast }) {
 
       if (filter.dateMode === 'eq') {
         if (filter.dateEq) {
-          body.createdAt = dayBound(filter.dateEq, 'start');
-          body.createdTo = dayBound(filter.dateEq, 'end');
+          body.drawnAt = dayBound(filter.dateEq, 'start');
+          body.drawnTo = dayBound(filter.dateEq, 'end');
         }
       } else {
-        if (filter.dateFrom) body.createdAt = dayBound(filter.dateFrom, 'start');
-        if (filter.dateTo) body.createdTo = dayBound(filter.dateTo, 'end');
+        if (filter.dateFrom) body.drawnAt = dayBound(filter.dateFrom, 'start');
+        if (filter.dateTo) body.drawnTo = dayBound(filter.dateTo, 'end');
       }
 
       const r = await api.winners(body);
