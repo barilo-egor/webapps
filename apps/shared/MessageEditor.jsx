@@ -207,7 +207,9 @@ export default function MessageEditor({
       fd.append('file', file);
       await request(`${API}/image/${encodeURIComponent(code)}`, { method: 'POST', body: fd });
       await loadFile();
-      notify('Файл обновлён', 'success');
+      // «Сохранено», а не «обновлён»: файл уже на сервере, нажимать
+      // «Сохранить» внизу не нужно (кнопка сохраняет только текст).
+      notify(isVideo(ext) ? 'Видео сохранено' : 'Изображение сохранено', 'success');
     } catch (err) {
       notify(err.message || 'Не удалось загрузить файл', 'error');
     } finally {
