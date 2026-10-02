@@ -29,8 +29,14 @@ const VARIABLE_KEYS = [
   'CASES_PRIZE_CHANCES',
 ];
 
-// Плейсхолдер, который обязан быть в названии кнопки кейса.
-const NAME_PLACEHOLDER = '{номер кейса}';
+// Плейсхолдер номера кейса в названии кнопки. Бот подставляет значения через
+// String.format (как во всех текстах кейсов), поэтому формат %1$s, а не
+// «{номер кейса}» из ТЗ. Одиночный %s бот тоже поймёт — проверка принимает оба.
+const NAME_PLACEHOLDER = '%1$s';
+const NAME_PLACEHOLDER_RE = /%(1\$)?s/;
+// Старый вариант из ТЗ: бот его не заменяет. Если он сохранён на бэке,
+// при загрузке меняем на %1$s — по «Сохранить» уйдёт исправленное название.
+const LEGACY_NAME_PLACEHOLDER = '{номер кейса}';
 
 // Название кейса по умолчанию — подставляется, если на бэке оно ещё не задано.
 // Записано ровно как в ТЗ: без пробела перед «№».
@@ -43,7 +49,7 @@ const GENERAL_FIELDS = [
   },
   {
     id: 'CASE_NAME_TEMPLATE', kind: 'text', label: 'Название кейса',
-    hint: `Плейсхолдер: ${NAME_PLACEHOLDER} — порядковый номер`,
+    hint: `Плейсхолдер: ${NAME_PLACEHOLDER} — порядковый номер кейса`,
   },
   {
     id: 'CASES_ANIMATION_SECONDS', kind: 'int', label: 'Длительность анимации открытия кейса, сек',
@@ -60,17 +66,17 @@ const PRIZE_AMOUNTS = [0, 250, 500, 1000, 3000, 10000];
 /* ---------------- Вкладка «Сообщения» ---------------- */
 
 const MESSAGES = [
-  { code: 'CASE_START_MESSAGE', hint: 'Плейсхолдер: {количество открытий}' },
+  { code: 'CASE_START_MESSAGE', hint: 'Плейсхолдер: %s — количество открытий' },
   { code: 'CASE_SELECT_MESSAGE' },
   { code: 'CASE_ANIMATION', hint: 'Анимация прокрутки кейса' },
-  { code: 'CASE_WIN_MESSAGE_250', hint: 'Плейсхолдер: {номер выигрыша}' },
-  { code: 'CASE_WIN_MESSAGE_500', hint: 'Плейсхолдер: {номер выигрыша}' },
-  { code: 'CASE_WIN_MESSAGE_1000', hint: 'Плейсхолдер: {номер выигрыша}' },
-  { code: 'CASE_WIN_MESSAGE_3000', hint: 'Плейсхолдер: {номер выигрыша}' },
-  { code: 'CASE_WIN_MESSAGE_10000', hint: 'Плейсхолдер: {номер выигрыша}' },
+  { code: 'CASE_WIN_MESSAGE_250', hint: 'Плейсхолдер: %1$s — номер выигрыша' },
+  { code: 'CASE_WIN_MESSAGE_500', hint: 'Плейсхолдер: %1$s — номер выигрыша' },
+  { code: 'CASE_WIN_MESSAGE_1000', hint: 'Плейсхолдер: %1$s — номер выигрыша' },
+  { code: 'CASE_WIN_MESSAGE_3000', hint: 'Плейсхолдер: %1$s — номер выигрыша' },
+  { code: 'CASE_WIN_MESSAGE_10000', hint: 'Плейсхолдер: %1$s — номер выигрыша' },
   { code: 'CASE_LOSE_MESSAGE' },
-  { code: 'CASE_WIN_BROADCAST_MESSAGE', hint: 'Плейсхолдеры: {пользователь}, {сумма приза}, {номер выигрыша}' },
-  { code: 'CASE_REF_CREDITED_MESSAGE', hint: 'Плейсхолдеры: {номер выигрыша}, {сумма приза}' },
+  { code: 'CASE_WIN_BROADCAST_MESSAGE', hint: 'Плейсхолдеры: %1$s — пользователь, %2$s — сумма приза, %3$s — номер выигрыша' },
+  { code: 'CASE_REF_CREDITED_MESSAGE', hint: 'Плейсхолдеры: %1$s — номер выигрыша, %2$s — сумма приза' },
 ];
 
 /* ---------------- Вкладка «Выигрыши» ---------------- */
@@ -191,7 +197,9 @@ export default function App() {
       // остаётся пустое — поэтому по кнопке «Сохранить» оно уйдёт на бэк.
       const nextGeneral = {
         ...savedValues,
-        CASE_NAME_TEMPLATE: savedValues.CASE_NAME_TEMPLATE.trim() || DEFAULT_CASE_NAME,
+        CASE_NAME_TEMPLATE: savedValues.CASE_NAME_TEMPLATE.trim()
+            ? savedValues.CASE_NAME_TEMPLATE.split(LEGACY_NAME_PLACEHOLDER).join(NAME_PLACEHOLDER)
+            : DEFAULT_CASE_NAME,
       };
       // Шансы приходят строкой «60;15;10;8;5;2» в порядке сумм.
       const parts = toStr(map.CASES_PRIZE_CHANCES).split(';');
@@ -226,8 +234,8 @@ export default function App() {
     if (!isPositiveInt(general.CASES_ANIMATION_SECONDS)) {
       e.CASES_ANIMATION_SECONDS = 'Укажите целое число больше нуля';
     }
-    if (!general.CASE_NAME_TEMPLATE.includes(NAME_PLACEHOLDER)) {
-      e.CASE_NAME_TEMPLATE = `В названии кейса должен быть плейсхолдер ${NAME_PLACEHOLDER}`;
+    if (!NAME_PLACEHOLDER_RE.test(general.CASE_NAME_TEMPLATE)) {
+      e.CASE_NAME_TEMPLATE = `В названии кейса должен быть плейсхолдер ${NAME_PLACEHOLDER} (номер кейса)`;
     }
     return e;
   }, [general]);
@@ -529,7 +537,12 @@ function MessagesTab({ showToast }) {
   const changed = MESSAGES.filter((m) => (texts[m.code] ?? '') !== (saved[m.code] ?? ''));
 
   const save = async () => {
-    if (!changed.length) { showToast('Изменений нет', 'info'); return; }
+    // Кнопка сохраняет только тексты; файлы MessageEditor сохраняет сразу.
+    // Поясняем это, чтобы после загрузки картинки «Изменений нет» не путало.
+    if (!changed.length) {
+      showToast('Тексты не менялись. Изображения и видео сохраняются сразу при загрузке', 'info');
+      return;
+    }
     setSaving(true);
     try {
       for (const m of changed) {
