@@ -39,8 +39,9 @@ body {
 }
 
 .app {
+  /* Без ограничения ширины: содержимое растягивается вместе с окном
+     (в Telegram на компьютере окно аппа можно сделать широким). */
   width: 100%;
-  max-width: 620px;
   margin: 0 auto;
   padding: 16px 16px 32px;
   display: flex;
@@ -633,12 +634,25 @@ table.wins td.c-right {
   font-variant-numeric: tabular-nums;
 }
 
+/* Колонка «Статус» — по ширине списка и прижата к правому краю таблицы.
+   Остальные колонки (и сумма тоже) выровнены по левому краю: при растягивании
+   окна промежутки между всеми колонками растут одинаково. */
+table.wins th:last-child,
+table.wins td:last-child { width: 1%; white-space: nowrap; }
+
+/* Ширина — по самой длинной подписи статуса: общее правило select даёт
+   width: 100% колонки, и длинные подписи («Переведен оператору») обрезались.
+   Апп шириной до 620px, поэтому таблица при нехватке места прокручивается вбок. */
 .status-select {
-  min-width: 170px;
+  width: auto;
+  max-width: none;
+  white-space: nowrap;
   padding: 7px 9px;
   font-size: 13.5px;
   border-radius: 8px;
 }
+
+.win-time { display: block; font-size: 12px; color: var(--tg-hint); }
 
 .state-inline {
   padding: 28px 12px;

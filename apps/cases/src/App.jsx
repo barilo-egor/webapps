@@ -802,7 +802,7 @@ function WinnersTab({ showToast }) {
                 <th>Дата</th>
                 <th>Chat ID</th>
                 <th>Username</th>
-                <th className="c-right">Сумма</th>
+                <th>Сумма</th>
                 <th>Статус</th>
               </tr>
               </thead>
@@ -815,10 +815,17 @@ function WinnersTab({ showToast }) {
                 return (
                     <tr key={c.id}>
                       <td className="mono">{c.id}</td>
-                      <td className="mono nowrap">{c.createdAt || '—'}</td>
+                      {/* Дата и время в две строки: апп узкий (до 620px), иначе
+                          колонке «Статус» не хватает места и подпись обрезается. */}
+                      <td className="mono nowrap win-date">
+                        {String(c.createdAt || '—').split(' ')[0]}
+                        {String(c.createdAt || '').split(' ')[1] && (
+                            <span className="win-time">{String(c.createdAt).split(' ')[1]}</span>
+                        )}
+                      </td>
                       <td className="mono">{u.chatId ?? '—'}</td>
                       <td>{u.username ? `@${u.username}` : '—'}</td>
-                      <td className="c-right mono">{fmtMoney(c.amount)}</td>
+                      <td className="mono nowrap">{fmtMoney(c.amount)}</td>
                       <td>
                         <select
                             className="status-select"
