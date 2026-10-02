@@ -118,8 +118,10 @@ const api = {
 
   // Текст сообщения правится в MessageEditor, а сохраняется общей кнопкой
   // вкладки — поэтому запрос живёт здесь.
+  // Адрес тот же, что в общем MessageEditor: PATCH /api/message_image/{КОД}
+  // (без /image/ — такого PATCH в rce нет), ответ 204.
   saveMessage: (code, text) =>
-      request(`/api/message_image/image/${encodeURIComponent(code)}`, {
+      request(`/api/message_image/${encodeURIComponent(code)}`, {
         method: 'PATCH',
         body: { text },
       }),
