@@ -27,7 +27,9 @@
     "dev:bonus": "npm run dev -w @webapps/bonus",
     "build:bonus": "npm run build -w @webapps/bonus",
     "dev:auto-roulette": "npm run dev -w @webapps/auto-roulette",
-    "build:auto-roulette": "npm run build -w @webapps/auto-roulette"
+    "build:auto-roulette": "npm run build -w @webapps/auto-roulette",
+    "dev:cases": "npm run dev -w @webapps/cases",
+    "build:cases": "npm run build -w @webapps/cases"
   },
 
   "devDependencies": {
