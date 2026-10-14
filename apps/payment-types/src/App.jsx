@@ -10,15 +10,17 @@ import './App.css';
 // Контракт бэкенда:
 //   GET    /api/payment-types
 //          -> [{ pid, name, dealType, fiatCurrency, minSum,
-//               requisiteAdditionalText, isOn, discounts: [...],
+//               requisiteAdditionalText, isOn, requestPhone, discounts: [...],
 //               requiredReceipt: { name, description, priority, requestMessage } }, ...]
+//          requestPhone — признак «Запрос телефона» (boolean): бот спросит у
+//          клиента номер телефона при выборе этого типа оплаты.
 //   POST   /api/payment-types
 //          <- { name, dealType, fiatCurrency, minSum,
-//              requisiteAdditionalText, isOn, requiredReceipt: 'NOT_REQUIRED' }
+//              requisiteAdditionalText, isOn, requestPhone, requiredReceipt: 'NOT_REQUIRED' }
 //          -> созданный объект
 //   PUT    /api/payment-types
 //          <- { pid, name, dealType, fiatCurrency, minSum,
-//              requisiteAdditionalText, discounts: [...], requiredReceipt: 'PDF' }
+//              requisiteAdditionalText, requestPhone, discounts: [...], requiredReceipt: 'PDF' }
 //          -> обновлённый объект
 //          (ранее было PATCH; бэк перевёл обновление на PUT)
 //   GET    /api/filters/required-receipt
@@ -115,6 +117,8 @@ function PaymentTypeFormModal({ initial, fiats, receipts, onClose, onSubmit, isS
               }))
           : []
   );
+  // «Запрос телефона»: по умолчанию выключен (ТЗ), при редактировании — с бэка.
+  const [requestPhone, setRequestPhone] = useState(Boolean(initial?.requestPhone));
   const [additionalText, setAdditionalText] = useState(
       initial?.requisiteAdditionalText || ''
   );
@@ -165,6 +169,7 @@ function PaymentTypeFormModal({ initial, fiats, receipts, onClose, onSubmit, isS
       requisiteAdditionalText: additionalText.trim(),
       // На бэк уходит строка-enum (NOT_REQUIRED | ANY | PDF).
       requiredReceipt,
+      requestPhone,
     };
 
     if (isEdit) {
@@ -300,6 +305,30 @@ function PaymentTypeFormModal({ initial, fiats, receipts, onClose, onSubmit, isS
                     </option>
                 ))}
               </select>
+            </div>
+
+            {/* Запрос телефона — переключатель после «Требуемого чека» (ТЗ, рис. 1) */}
+            <div className="field">
+              <label className="phone-card" htmlFor="pt-phone">
+                <span className="phone-card-text">
+                  <span className="phone-card-title">
+                    <i className="fas fa-mobile-alt" aria-hidden="true"></i>
+                    Запрос телефона
+                  </span>
+                  <span className="phone-card-hint">
+                    Перед поиском реквизитов у клиента будет запрошен номер телефона
+                  </span>
+                </span>
+                <span className="switch">
+                  <input
+                      id="pt-phone"
+                      type="checkbox"
+                      checked={requestPhone}
+                      onChange={(e) => setRequestPhone(e.target.checked)}
+                  />
+                  <span className="switch-track" aria-hidden="true"></span>
+                </span>
+              </label>
             </div>
 
             {/* Скидки */}
@@ -537,6 +566,7 @@ function TableSection({
                         <th>Фиатная валюта</th>
                         <th>Минимальная сумма</th>
                         <th>Требуемый чек</th>
+                        <th className="col-phone" title="Запрос телефона">Телефон</th>
                         <th aria-label="Удаление" className="col-action"></th>
                       </tr>
                       </thead>
@@ -568,6 +598,14 @@ function TableSection({
                             <td>{formatNumber(it.minSum)}</td>
                             <td className="cell-receipt">
                               {it.requiredReceipt?.description || '—'}
+                            </td>
+                            {/* Признак включён — отметка, выключен — пусто (ТЗ, рис. 2) */}
+                            <td className="cell-phone">
+                              {it.requestPhone && (
+                                  <span className="phone-mark" title="Запрос телефона включён">
+                                    <i className="fas fa-check" aria-label="Запрос телефона включён"></i>
+                                  </span>
+                              )}
                             </td>
                             <td className="cell-action">
                               <button

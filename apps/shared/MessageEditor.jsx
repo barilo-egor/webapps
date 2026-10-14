@@ -21,7 +21,7 @@ import { request } from './request.js';
      GET    /text/{КОД}            -> {success, data:"текст"}
      GET    /format/{КОД}          -> {success, data:".mp4"} либо data:null
      GET    /image|animation|graphics|video/{КОД}  -> сам файл байтами
-     PATCH  /image/{КОД}           <- {text:"..."}   обновление текста
+     PATCH  /{КОД}                 <- {text:"..."}   обновление текста (ответ 204)
      POST   /image/{КОД}           <- multipart, поле file
      DELETE /image/{КОД}                            удаление файла
 
@@ -167,7 +167,9 @@ export default function MessageEditor({
     if (!dirty) { notify('Изменений нет', 'info'); return; }
     setSaving(true);
     try {
-      await request(`${API}/image/${encodeURIComponent(code)}`, {
+      // Текст обновляется по /{КОД}, без /image/: адрес /image/{КОД} из
+      // коллекции для PATCH в rce не существует (проверено вживую, 204).
+      await request(`${API}/${encodeURIComponent(code)}`, {
         method: 'PATCH',
         body: { text: current },
       });
@@ -205,7 +207,9 @@ export default function MessageEditor({
       fd.append('file', file);
       await request(`${API}/image/${encodeURIComponent(code)}`, { method: 'POST', body: fd });
       await loadFile();
-      notify('Файл обновлён', 'success');
+      // «Сохранено», а не «обновлён»: файл уже на сервере, нажимать
+      // «Сохранить» внизу не нужно (кнопка сохраняет только текст).
+      notify(isVideo(ext) ? 'Видео сохранено' : 'Изображение сохранено', 'success');
     } catch (err) {
       notify(err.message || 'Не удалось загрузить файл', 'error');
     } finally {
