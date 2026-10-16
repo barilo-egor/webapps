@@ -8,7 +8,7 @@ import { request } from '../../shared/request.js';
    (таблица deal БД merchant_control). Эндпоинты (коллекция rce,
    папка «Контроль мерчантов»):
      GET    /api/merchant-control[?merchant=…]   — список
-     POST   /api/merchant-control/chat  <- { dealLastDate, merchant }  — «В чат»
+     POST   /api/merchant-control/chat  <- { dealLastDate, snapshotAt, merchant }  — «В чат»
      DELETE /api/merchant-control       <- { dealLastDate, merchant }  — «Сброс»
 
    dealLastDate — граница строки: дата последней сделки, вошедшей в
@@ -16,6 +16,10 @@ import { request } from '../../shared/request.js';
    поэтому сделки, пришедшие после чтения строки, не отправляются и
    не удаляются (так требует ТЗ).
    В ответе бэк присылает её в UTC+3, а в запросах ждёт UTC+0.
+
+   snapshotAt — момент, на который прочитаны данные строки (колонка «Данные на»),
+   UTC+0. Только для текста сообщения «На {дата}» в чате; отбор сделок по-прежнему
+   по dealLastDate.
    ============================================================ */
 
 const API = '/api/merchant-control';
@@ -207,7 +211,8 @@ export default function App() {
     if (!body.dealLastDate) { showToast('Нет данных о последней сделке — обновите строку', 'error'); return; }
     setBusy(row.merchant, 'chat');
     try {
-      await request(`${API}/chat`, { method: 'POST', body });
+      // snapshotAt — «Данные на» этой строки, его бэк выводит в сообщении «На …».
+      await request(`${API}/chat`, { method: 'POST', body: { ...body, snapshotAt: new Date(row.readAt).toISOString() } });
       showToast('Список сделок отправлен в чат', 'success');
     } catch (e) {
       showToast(e.message || 'Не удалось отправить в чат', 'error');
