@@ -9,7 +9,7 @@ import { request } from '../../shared/request.js';
    папка «Контроль мерчантов»):
      GET    /api/merchant-control[?merchant=…]   — список
      POST   /api/merchant-control/chat  <- { dealLastDate, snapshotAt, merchant }  — «В чат»
-     DELETE /api/merchant-control       <- { dealLastDate, merchant }  — «Сброс»
+     DELETE /api/merchant-control       <- { dealLastDate, snapshotAt, merchant }  — «Сброс»
 
    dealLastDate — граница строки: дата последней сделки, вошедшей в
    показанную сумму. «В чат» и «Сброс» трогают только сделки до неё,
@@ -227,7 +227,8 @@ export default function App() {
     if (!body.dealLastDate) { showToast('Нет данных о последней сделке — обновите строку', 'error'); return; }
     setBusy(row.merchant, 'reset');
     try {
-      await request(API, { method: 'DELETE', body });
+      // snapshotAt бэк требует и при сбросе (с 17.10.2026) — тот же «Данные на», что и в «В чат».
+      await request(API, { method: 'DELETE', body: { ...body, snapshotAt: new Date(row.readAt).toISOString() } });
       setResetRow(null);
       showToast('История сделок сброшена', 'success');
       // После сброса в строке остаются только сделки, пришедшие после чтения.
