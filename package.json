@@ -29,7 +29,9 @@
     "dev:auto-roulette": "npm run dev -w @webapps/auto-roulette",
     "build:auto-roulette": "npm run build -w @webapps/auto-roulette",
     "dev:cases": "npm run dev -w @webapps/cases",
-    "build:cases": "npm run build -w @webapps/cases"
+    "build:cases": "npm run build -w @webapps/cases",
+    "dev:merchant-control": "npm run dev -w @webapps/merchant-control",
+    "build:merchant-control": "npm run build -w @webapps/merchant-control"
   },
 
   "devDependencies": {

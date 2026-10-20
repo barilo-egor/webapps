@@ -1,0 +1,249 @@
+/* ============================================================
+   Веб-апп «Контроль мерчантов».
+   Тема и базовые компоненты — как в других аппах (cases и др.):
+   в Telegram цвета берутся из его переменных --tg-theme-*.
+   ============================================================ */
+:root {
+  --tg-bg: var(--tg-theme-bg-color, #17212b);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #232e3c);
+  --tg-text: var(--tg-theme-text-color, #f5f5f5);
+  --tg-hint: var(--tg-theme-hint-color, #90a4b8);
+  --tg-link: var(--tg-theme-link-color, #6ab3f3);
+  --tg-button: var(--tg-theme-button-color, #4a90d9);
+  --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-danger: #e26363;
+  --tg-success: #4bb371;
+  --tg-warning: #e0a83a;
+  --tg-border: rgba(255, 255, 255, 0.08);
+  --tg-row-hover: rgba(255, 255, 255, 0.03);
+  --tg-radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100vh; display: flex; flex-direction: column; }
+
+.app {
+  /* Без ограничения ширины: содержимое растягивается вместе с окном. */
+  width: 100%;
+  padding: 16px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.mono { font-variant-numeric: tabular-nums; }
+
+/* ---- Шапка ---- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 2px;
+}
+.header-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.header .icon {
+  width: 36px; height: 36px; flex: none;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  background: var(--tg-button); color: var(--tg-button-text);
+  font-size: 16px;
+}
+.header h1 { font-size: 19px; font-weight: 800; margin: 0; }
+
+/* ---- Карточка фильтра ---- */
+.card {
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius);
+}
+.filter-head {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 15px; font-weight: 700;
+  color: var(--tg-link);
+}
+.filter-head i { color: var(--tg-hint); font-size: 13px; }
+
+.search {
+  position: relative;
+  margin: 0 14px 14px;
+}
+.search > i {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--tg-hint); font-size: 14px; pointer-events: none;
+}
+.search input {
+  width: 100%;
+  background: var(--tg-bg); color: var(--tg-text);
+  border: 1px solid var(--tg-border); border-radius: 10px;
+  padding: 10px 38px 10px 36px;
+  font-family: inherit; font-size: 15px; outline: none;
+  transition: border-color 0.15s;
+}
+.search input:focus { border-color: var(--tg-button); }
+.search-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px;
+  border: none; border-radius: 8px; background: none; cursor: pointer;
+  color: var(--tg-hint); font-size: 14px;
+}
+.search-clear:hover { color: var(--tg-text); }
+
+/* ---- Пояснение и предупреждение ---- */
+.info { margin: 0; padding: 0 2px; color: var(--tg-hint); font-size: 13px; }
+
+.warning {
+  padding: 12px 14px;
+  border-left: 3px solid var(--tg-warning);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tg-warning) 12%, transparent);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* ---- Таблица ---- */
+.table-wrap {
+  overflow-x: auto;
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius);
+}
+table.grid { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.grid th,
+table.grid td { padding: 11px 14px; text-align: left; vertical-align: middle; }
+table.grid thead th {
+  font-size: 12px; font-weight: 700; color: var(--tg-hint);
+  border-bottom: 1px solid var(--tg-border);
+  white-space: nowrap;
+}
+table.grid tbody tr + tr td { border-top: 1px solid var(--tg-border); }
+table.grid tbody tr:hover td { background: var(--tg-row-hover); }
+
+table.grid th.c-right,
+table.grid td.c-right { text-align: right; }
+.c-num { width: 1%; color: var(--tg-hint); }
+.c-name { font-weight: 700; white-space: nowrap; }
+.c-sum { font-weight: 800; color: var(--tg-link); white-space: nowrap; }
+.c-time { color: var(--tg-hint); font-size: 12.5px; white-space: nowrap; }
+.c-act { width: 1%; }
+td.empty { text-align: center; color: var(--tg-hint); padding: 32px 14px; }
+
+.row-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---- Кнопки ---- */
+.btn {
+  appearance: none;
+  border: none; border-radius: 10px;
+  padding: 10px 14px;
+  font-family: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  white-space: nowrap;
+  transition: opacity 0.15s, background 0.15s, transform 0.05s;
+}
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+
+.btn-secondary { background: transparent; color: var(--tg-text); border: 1px solid var(--tg-border); }
+.btn-danger { background: var(--tg-danger); color: #fff; }
+
+.btn-sm { padding: 7px 11px; font-size: 13px; border-radius: 8px; }
+.btn-icon { width: 34px; padding-left: 0; padding-right: 0; }
+.btn-outline {
+  background: transparent; color: var(--tg-link);
+  border: 1px solid color-mix(in srgb, var(--tg-link) 45%, transparent);
+}
+.btn-outline:hover:not(:disabled) { background: color-mix(in srgb, var(--tg-link) 10%, transparent); }
+.btn-outline-danger {
+  background: transparent; color: var(--tg-danger);
+  border: 1px solid color-mix(in srgb, var(--tg-danger) 50%, transparent);
+}
+.btn-outline-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--tg-danger) 10%, transparent); }
+
+/* ---- Состояния ---- */
+.state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 40px 16px;
+  color: var(--tg-hint); text-align: center;
+}
+.state i { font-size: 28px; }
+.state-error i { color: var(--tg-danger); }
+.state-error span { color: var(--tg-text); }
+
+/* ---- Подтверждение сброса ---- */
+.overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  width: 100%; max-width: 440px; max-height: 85vh; overflow-y: auto;
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+.modal-head { padding: 16px 16px 6px; }
+.modal-head h2 { margin: 0; font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.modal-head h2 i { color: var(--tg-warning); }
+.modal-body { padding: 0 16px 4px; font-size: 14.5px; }
+.modal-body p { margin: 10px 0; }
+.modal-note { color: var(--tg-hint); font-size: 13.5px; }
+.modal-foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--tg-border);
+  margin-top: 8px;
+}
+
+/* ---- Тост ---- */
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  max-width: 90%;
+  background: #2b3746; color: #fff;
+  border: 1px solid var(--tg-border); border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 14px; font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 150;
+  animation: toast-in 0.2s ease-out;
+}
+.toast.success { border-left: 3px solid var(--tg-success); }
+.toast.error { border-left: 3px solid var(--tg-danger); }
+.toast.info { border-left: 3px solid var(--tg-link); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ---- Узкий экран (телефон) ---- */
+@media (max-width: 560px) {
+  .app { padding: 12px 10px 24px; }
+  .header h1 { font-size: 17px; }
+  table.grid th, table.grid td { padding: 10px 8px; }
+  .c-time { font-size: 12px; }
+  /* «В чат» — только иконка, чтобы строка помещалась */
+  .btn-chat-label { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
