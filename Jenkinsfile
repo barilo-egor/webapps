@@ -48,8 +48,8 @@ pipeline {
                                 if (fileExists('dist')) {
                                     sshagent([env.SSH_CRED_ID]) {
                                         def remotePath = "${env.WEBAPPS_DEPLOY_PATH}/${appName}"
-                                        def sshCmd = "ssh -p ${env.SSH_PORT} -o StrictHostKeyChecking=no ${env.SSH_USER}@${env.WEBAPPS_DEPLOY_HOST}"
-                                        def scpCmd = "scp -P ${env.SSH_PORT} -o StrictHostKeyChecking=no"
+                                        def sshCmd = "ssh -p ${env.SSH_PORT} ${env.SSH_USER}@${env.WEBAPPS_DEPLOY_HOST}"
+                                        def scpCmd = "scp -P ${env.SSH_PORT}"
 
                                         sh "${sshCmd} 'mkdir -p ${remotePath}'"
                                         sh "${scpCmd} -r dist/* ${env.SSH_USER}@${env.WEBAPPS_DEPLOY_HOST}:${remotePath}/"
