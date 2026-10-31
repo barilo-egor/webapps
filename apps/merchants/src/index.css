@@ -249,7 +249,14 @@ td.editing { padding-top: 6px !important; padding-bottom: 6px !important; }
   border-radius: 16px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
-.modal-wide { max-width: 600px; }
+/* Карточка мерчанта: открывается шире, чтобы таблица привязки чаще помещалась целиком,
+   и растягивается вручную за правый нижний угол (на телефоне — во всю ширину, без растягивания). */
+.modal-wide {
+  width: min(840px, 100%); max-width: calc(100vw - 40px);
+  min-width: min(420px, 100%); min-height: 260px; max-height: calc(100vh - 40px);
+  resize: both; overflow: hidden;
+}
+.modal-wide .modal-body { flex: 1; min-height: 0; }
 .modal-head {
   display: flex; align-items: center; gap: 12px;
   padding: 16px 18px; border-bottom: 1px solid var(--tg-border);
@@ -320,6 +327,8 @@ table.mini tbody tr[class], table.mini tbody tr:has(.c-check) { cursor: pointer;
 table.mini th.c-center, table.mini td.c-center { text-align: center; }
 .c-check { width: 90px; }
 table.matrix tbody td:first-child { white-space: nowrap; }
+/* Длинные названия методов («Пополнение счета моб.телефона») переносятся, а не растягивают таблицу */
+table.matrix thead th { white-space: normal; min-width: 72px; vertical-align: bottom; line-height: 1.3; }
 
 /* ---- Тост ---- */
 .toast {
@@ -349,6 +358,7 @@ table.matrix tbody td:first-child { white-space: nowrap; }
   table.grid th, table.grid td { padding: 10px 8px; }
   table.mini th, table.mini td { padding: 9px 10px; }
   .modal-body { padding: 14px; }
+  .modal-wide { width: 100%; max-width: none; min-width: 0; resize: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
