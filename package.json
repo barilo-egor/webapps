@@ -31,7 +31,9 @@
     "dev:cases": "npm run dev -w @webapps/cases",
     "build:cases": "npm run build -w @webapps/cases",
     "dev:merchant-control": "npm run dev -w @webapps/merchant-control",
-    "build:merchant-control": "npm run build -w @webapps/merchant-control"
+    "build:merchant-control": "npm run build -w @webapps/merchant-control",
+    "dev:merchants": "npm run dev -w @webapps/merchants",
+    "build:merchants": "npm run build -w @webapps/merchants"
   },
 
   "devDependencies": {
