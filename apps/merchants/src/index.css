@@ -1,0 +1,366 @@
+/* ============================================================
+   Веб-апп «Мерчанты».
+   Тема и базовые компоненты — как в других аппах (merchant-control,
+   cases и др.): в Telegram цвета берутся из его переменных --tg-theme-*.
+   ============================================================ */
+:root {
+  --tg-bg: var(--tg-theme-bg-color, #17212b);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #232e3c);
+  --tg-text: var(--tg-theme-text-color, #f5f5f5);
+  --tg-hint: var(--tg-theme-hint-color, #90a4b8);
+  --tg-link: var(--tg-theme-link-color, #6ab3f3);
+  --tg-button: var(--tg-theme-button-color, #4a90d9);
+  --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-danger: #e26363;
+  --tg-success: #4bb371;
+  --tg-warning: #e0a83a;
+  --tg-border: color-mix(in srgb, var(--tg-text) 10%, transparent);
+  --tg-row-hover: color-mix(in srgb, var(--tg-text) 4%, transparent);
+  --tg-radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100vh; display: flex; flex-direction: column; }
+
+.app {
+  width: 100%;
+  padding: 16px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.mono { font-variant-numeric: tabular-nums; }
+
+/* ---- Шапка: заголовок слева, «⚙» и «?» справа ---- */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 4px 2px;
+}
+.header-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.header .icon {
+  width: 36px; height: 36px; flex: none;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  background: var(--tg-button); color: var(--tg-button-text);
+  font-size: 16px;
+}
+.header h1 { font-size: 19px; font-weight: 800; margin: 0; }
+.header-actions { display: flex; gap: 8px; flex: none; }
+.round-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1px solid var(--tg-border); background: var(--tg-secondary-bg);
+  color: var(--tg-text); cursor: pointer; font-size: 13px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.round-btn:hover { border-color: var(--tg-button); color: var(--tg-link); }
+
+/* ---- Карточка фильтра ---- */
+.card {
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius);
+}
+.filter-head {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 15px; font-weight: 700;
+  color: var(--tg-link);
+}
+.filter-head i { color: var(--tg-hint); font-size: 13px; }
+.filter-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 14px; }
+.filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+
+/* ---- Поля ---- */
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field-label { font-size: 13px; color: var(--tg-hint); }
+.req { color: var(--tg-danger); }
+.field-error { font-size: 12.5px; color: var(--tg-danger); }
+
+.field select,
+.input-clear input {
+  width: 100%; height: 42px;
+  background: var(--tg-bg); color: var(--tg-text);
+  border: 1px solid var(--tg-border); border-radius: 10px;
+  padding: 0 12px;
+  font-family: inherit; font-size: 15px; outline: none;
+  transition: border-color 0.15s;
+}
+.field select:focus, .input-clear input:focus { border-color: var(--tg-button); }
+.input-clear { position: relative; }
+.input-clear input { padding-right: 38px; }
+.input-clear.with-icon input { padding-left: 36px; }
+.input-clear input.invalid { border-color: var(--tg-danger); }
+.input-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--tg-hint); font-size: 14px; pointer-events: none;
+}
+.clear-btn {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px;
+  border: none; border-radius: 8px; background: none; cursor: pointer;
+  color: var(--tg-hint); font-size: 14px;
+}
+.clear-btn:hover { color: var(--tg-text); }
+
+/* ---- Таблица мерчантов ---- */
+.table-card {
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius);
+  overflow: hidden;
+}
+.table-hint {
+  margin: 0; padding: 11px 14px;
+  font-size: 13px; color: var(--tg-hint);
+  border-bottom: 1px solid var(--tg-border);
+  background: color-mix(in srgb, var(--tg-text) 3%, transparent);
+}
+.table-wrap { overflow-x: auto; transition: opacity 0.15s; }
+.table-wrap.is-loading { opacity: 0.55; pointer-events: none; }
+table.grid { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.grid th,
+table.grid td { padding: 11px 14px; text-align: left; vertical-align: middle; }
+table.grid thead th {
+  font-size: 12px; font-weight: 700; color: var(--tg-hint);
+  text-transform: uppercase; letter-spacing: .03em;
+  border-bottom: 1px solid var(--tg-border);
+  white-space: nowrap;
+}
+table.grid tbody tr + tr td { border-top: 1px solid var(--tg-border); }
+table.grid tbody tr:hover td { background: var(--tg-row-hover); }
+
+table.grid th.c-right, table.grid td.c-right { text-align: right; }
+table.grid th.c-center, table.grid td.c-center { text-align: center; }
+.c-order { width: 64px; }
+.c-on { width: 56px; }
+.c-arrow { width: 1%; padding-left: 4px !important; padding-right: 4px !important; }
+.c-name { font-weight: 700; white-space: nowrap; cursor: pointer; user-select: none; }
+tr.is-off .c-name { color: var(--tg-hint); }
+td.empty { text-align: center; color: var(--tg-hint); padding: 32px 14px; }
+
+table.grid input[type="checkbox"],
+table.mini input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--tg-button); cursor: pointer; margin: 0; }
+
+/* Ячейка, которая меняется по клику: подсветка при наведении */
+td.editable { cursor: text; }
+td.editable:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tg-button) 45%, transparent); border-radius: 6px; }
+td.editing { padding-top: 6px !important; padding-bottom: 6px !important; }
+.cell-input {
+  width: 100px; padding: 6px 8px; text-align: right;
+  background: var(--tg-bg); color: var(--tg-text);
+  border: 1px solid var(--tg-button); border-radius: 8px;
+  font-family: inherit; font-size: 14px; outline: none;
+  font-variant-numeric: tabular-nums;
+}
+.c-order .cell-input { width: 56px; text-align: center; }
+.cell-input.invalid { border-color: var(--tg-danger); }
+.cell-error { display: block; margin-top: 4px; font-size: 12px; color: var(--tg-danger); white-space: nowrap; }
+.cell-select {
+  padding: 6px 8px;
+  background: var(--tg-bg); color: var(--tg-text);
+  border: 1px solid var(--tg-button); border-radius: 8px;
+  font-family: inherit; font-size: 14px; outline: none;
+}
+
+/* Плашки «Требуемый чек»: серая / зелёная / синяя */
+.badge {
+  display: inline-block; padding: 4px 10px; border-radius: 7px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+  color: var(--badge); background: color-mix(in srgb, var(--badge) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge) 28%, transparent);
+}
+.badge-grey { --badge: var(--tg-hint); }
+.badge-green { --badge: var(--tg-success); }
+.badge-blue { --badge: var(--tg-link); }
+
+/* Стрелки ⬆⬇ и кнопки страниц */
+.arrow-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: inline-grid; place-items: center;
+  border: none; background: none; cursor: pointer;
+  color: var(--tg-link); font-size: 13px;
+}
+.arrow-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--tg-link) 12%, transparent); }
+.arrow-btn:disabled { color: var(--tg-hint); opacity: 0.35; cursor: default; }
+
+.pager {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px; border-top: 1px solid var(--tg-border);
+  font-size: 13px; color: var(--tg-hint);
+}
+.pager-nav { display: flex; align-items: center; gap: 2px; }
+.pager-page { min-width: 56px; text-align: center; font-weight: 700; color: var(--tg-text); font-variant-numeric: tabular-nums; }
+
+/* ---- Кнопки ---- */
+.btn {
+  appearance: none;
+  border: none; border-radius: 10px;
+  padding: 10px 16px;
+  font-family: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  white-space: nowrap;
+  transition: opacity 0.15s, background 0.15s, transform 0.05s;
+}
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn-primary { background: var(--tg-button); color: var(--tg-button-text); }
+.btn-secondary { background: transparent; color: var(--tg-text); border: 1px solid var(--tg-border); }
+
+/* ---- Состояния ---- */
+.state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 40px 16px;
+  color: var(--tg-hint); text-align: center;
+}
+.state i { font-size: 28px; }
+.state-error i { color: var(--tg-danger); }
+.state-error span { color: var(--tg-text); }
+
+/* ---- Модальные окна ---- */
+.overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  width: 100%; max-width: 460px; max-height: 88vh;
+  display: flex; flex-direction: column;
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+/* Карточка мерчанта: открывается шире, чтобы таблица привязки чаще помещалась целиком,
+   и растягивается вручную за правый нижний угол (на телефоне — во всю ширину, без растягивания). */
+.modal-wide {
+  width: min(840px, 100%); max-width: calc(100vw - 40px);
+  min-width: min(420px, 100%); min-height: 260px; max-height: calc(100vh - 40px);
+  resize: both; overflow: hidden;
+}
+.modal-wide .modal-body { flex: 1; min-height: 0; }
+.modal-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 18px; border-bottom: 1px solid var(--tg-border);
+}
+.modal-head h2 { margin: 0; font-size: 17px; font-weight: 800; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.modal-icon {
+  width: 34px; height: 34px; flex: none; border-radius: 10px;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--tg-button) 15%, transparent); color: var(--tg-link);
+  font-size: 14px;
+}
+.modal-x {
+  width: 32px; height: 32px; border: none; border-radius: 8px; background: none;
+  color: var(--tg-hint); cursor: pointer; font-size: 17px;
+}
+.modal-x:hover { color: var(--tg-text); }
+.modal-body { padding: 16px 18px; overflow-y: auto; }
+.modal-foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 18px; border-top: 1px solid var(--tg-border);
+}
+.form { display: flex; flex-direction: column; gap: 16px; }
+.help p { margin: 0 0 10px; font-size: 14.5px; line-height: 1.55; }
+.help p:last-child { margin-bottom: 0; }
+
+/* ---- Сворачиваемые панели карточки ---- */
+.panels { display: flex; flex-direction: column; gap: 10px; }
+.panel {
+  border: 1px solid var(--tg-border); border-radius: 12px; overflow: hidden;
+  background: var(--tg-secondary-bg);
+}
+.panel-head {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 14.5px; font-weight: 600; color: var(--tg-text); text-align: left;
+}
+.panel.open > .panel-head {
+  color: var(--tg-link);
+  background: color-mix(in srgb, var(--tg-button) 10%, transparent);
+  border-bottom: 1px solid var(--tg-border);
+}
+.panel-icon {
+  width: 28px; height: 28px; flex: none; border-radius: 8px;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--tg-text) 6%, transparent); color: var(--tg-text); font-size: 13px;
+}
+.panel-title { flex: 1; min-width: 0; }
+.panel-caret { color: var(--tg-hint); font-size: 12px; }
+.panel-empty { margin: 0; padding: 14px; color: var(--tg-hint); font-size: 14px; }
+
+/* Вложенные панели валют внутри «Включения автоподтверждения» */
+.panel.nested { border: none; border-radius: 0; background: none; }
+.panel.nested + .panel.nested { border-top: 1px solid var(--tg-border); }
+.panel.nested > .panel-head { font-size: 13.5px; font-weight: 700; padding: 10px 14px; }
+.panel.nested.open > .panel-head { background: none; color: var(--tg-text); }
+
+/* Таблицы внутри панелей */
+.mini-scroll { overflow-x: auto; }
+table.mini { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.mini th, table.mini td { padding: 10px 14px; text-align: left; }
+table.mini thead th {
+  font-size: 11.5px; font-weight: 700; color: var(--tg-hint);
+  text-transform: uppercase; letter-spacing: .04em;
+  border-bottom: 1px solid var(--tg-border); white-space: nowrap;
+}
+table.mini tbody tr + tr td { border-top: 1px solid var(--tg-border); }
+table.mini tbody tr[class], table.mini tbody tr:has(.c-check) { cursor: pointer; }
+table.mini th.c-center, table.mini td.c-center { text-align: center; }
+.c-check { width: 90px; }
+table.matrix tbody td:first-child { white-space: nowrap; }
+/* Длинные названия методов («Пополнение счета моб.телефона») переносятся, а не растягивают таблицу */
+table.matrix thead th { white-space: normal; min-width: 72px; vertical-align: bottom; line-height: 1.3; }
+
+/* ---- Тост ---- */
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  max-width: 90%;
+  background: #2b3746; color: #fff;
+  border: 1px solid var(--tg-border); border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 14px; font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 150;
+  animation: toast-in 0.2s ease-out;
+}
+.toast.success { border-left: 3px solid var(--tg-success); }
+.toast.error { border-left: 3px solid var(--tg-danger); }
+.toast.info { border-left: 3px solid var(--tg-link); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ---- Узкий экран (телефон) ---- */
+@media (max-width: 560px) {
+  .app { padding: 12px 10px 24px; }
+  .header h1 { font-size: 17px; }
+  .filter-row { grid-template-columns: 1fr; }
+  table.grid th, table.grid td { padding: 10px 8px; }
+  table.mini th, table.mini td { padding: 9px 10px; }
+  .modal-body { padding: 14px; }
+  .modal-wide { width: 100%; max-width: none; min-width: 0; resize: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
