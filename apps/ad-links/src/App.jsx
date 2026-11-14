@@ -25,7 +25,7 @@ const apiFetch = async (url, options = {}) => {
 const USERS_PAGE_SIZE = 25;
 
 const realApi = {
-  // GET /api/ad-links -> { adLinks:[{id,code,comment?,bot}], bot }
+  // GET /api/ad-links -> { adLinks:[{id,code,comment?,bot}] }
   list: () => apiFetch('/api/ad-links'),
   // POST /api/ad-links (тело {} или {comment}) -> создаёт ссылку
   create: () => apiFetch('/api/ad-links', { method: 'POST', body: JSON.stringify({}) }),
@@ -73,7 +73,7 @@ const api = realApi;
 // =============================================================
 // УТИЛИТЫ
 // =============================================================
-function linkUrl(bot, link) { return `https://t.me/${link.bot || bot}?start=${link.code}`; }
+function linkUrl(link) { return `https://t.me/${link.bot}?start=${link.code}`; }
 
 function formatDateTime(iso) {
   if (!iso) return '—';
@@ -105,7 +105,7 @@ function Toast({ toast }) {
 // =============================================================
 // МОДАЛКА комментария
 // =============================================================
-function CommentModal({ link, bot, onClose, onSave }) {
+function CommentModal({ link, onClose, onSave }) {
   const [value, setValue] = useState(link.comment || '');
   const [busy, setBusy] = useState(false);
   const save = async () => {
@@ -120,7 +120,7 @@ function CommentModal({ link, bot, onClose, onSave }) {
             <h3><i className="fas fa-comment-dots" aria-hidden="true"></i> Комментарий к ссылке</h3>
             <button type="button" className="modal-close" onClick={onClose} aria-label="Закрыть"><i className="fas fa-xmark"></i></button>
           </div>
-          <a className="modal-link" href={linkUrl(bot, link)} target="_blank" rel="noreferrer">{linkUrl(bot, link)}</a>
+          <a className="modal-link" href={linkUrl(link)} target="_blank" rel="noreferrer">{linkUrl(link)}</a>
           <textarea className="textarea" value={value} onChange={(e) => setValue(e.target.value)} rows={4} placeholder="Введите комментарий" autoFocus />
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Отмена</button>
@@ -174,7 +174,6 @@ function DeleteModal({ usersCount, onClose, onConfirm }) {
 // =============================================================
 function LinksScreen({ onOpenStats, showToast }) {
   const [links, setLinks] = useState([]);
-  const [bot, setBot] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -186,7 +185,6 @@ function LinksScreen({ onOpenStats, showToast }) {
     try {
       const res = await api.list();
       setLinks(Array.isArray(res?.adLinks) ? res.adLinks : []);
-      setBot(res?.bot || '');
     } catch (e) {
       setError(e.message || 'Не удалось загрузить ссылки');
     } finally { setLoading(false); }
@@ -202,7 +200,7 @@ function LinksScreen({ onOpenStats, showToast }) {
   };
 
   const copyLink = async (link) => {
-    const url = linkUrl(bot, link);
+    const url = linkUrl(link);
     try {
       await navigator.clipboard.writeText(url);
       showToast('success', 'Ссылка скопирована');
@@ -277,10 +275,10 @@ function LinksScreen({ onOpenStats, showToast }) {
                       <div className="lcell lcell-del" aria-hidden="true"></div>
                     </div>
                     {links.map((l) => (
-                        <div className="ltrow" key={l.id} onDoubleClick={() => onOpenStats(l, bot)}>
+                        <div className="ltrow" key={l.id} onDoubleClick={() => onOpenStats(l)}>
                           <div className="lcell">
                             <button type="button" className="link-btn" onClick={() => copyLink(l)} title="Копировать ссылку">
-                              <span className="link-text">{linkUrl(bot, l)}</span>
+                              <span className="link-text">{linkUrl(l)}</span>
                               <i className="fas fa-copy link-copy" aria-hidden="true"></i>
                             </button>
                           </div>
@@ -302,7 +300,7 @@ function LinksScreen({ onOpenStats, showToast }) {
         )}
 
         {editLink && (
-            <CommentModal link={editLink} bot={bot} onClose={() => setEditLink(null)} onSave={saveComment} />
+            <CommentModal link={editLink} onClose={() => setEditLink(null)} onSave={saveComment} />
         )}
         {deleteLink && (
             <DeleteModal usersCount={deleteLink.usersCount} onClose={() => setDeleteLink(null)} onConfirm={confirmDelete} />
@@ -388,7 +386,7 @@ function UsersPager({ page, total, busy, onPage }) {
   );
 }
 
-function StatsScreen({ link, bot, onBack, showToast }) {
+function StatsScreen({ link, onBack, showToast }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -493,7 +491,7 @@ function StatsScreen({ link, bot, onBack, showToast }) {
           <button type="button" className="btn btn-secondary" onClick={onBack}>
             <i className="fas fa-arrow-left" aria-hidden="true"></i> Назад
           </button>
-          <a className="stats-link" href={linkUrl(bot, link)} target="_blank" rel="noreferrer">{linkUrl(bot, link)}</a>
+          <a className="stats-link" href={linkUrl(link)} target="_blank" rel="noreferrer">{linkUrl(link)}</a>
         </div>
 
         {loading && <div className="state"><i className="fas fa-spinner fa-spin"></i><span>Загрузка…</span></div>}
@@ -619,7 +617,7 @@ function StatsScreen({ link, bot, onBack, showToast }) {
 // КОРНЕВОЙ КОМПОНЕНТ
 // =============================================================
 export default function App() {
-  const [screen, setScreen] = useState({ name: 'list' }); // {name:'list'} | {name:'stats', link, bot}
+  const [screen, setScreen] = useState({ name: 'list' }); // {name:'list'} | {name:'stats', link}
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
@@ -646,12 +644,11 @@ export default function App() {
             {screen.name === 'list' ? (
                 <LinksScreen
                     showToast={showToast}
-                    onOpenStats={(link, bot) => setScreen({ name: 'stats', link, bot })}
+                    onOpenStats={(link) => setScreen({ name: 'stats', link })}
                 />
             ) : (
                 <StatsScreen
                     link={screen.link}
-                    bot={screen.bot}
                     showToast={showToast}
                     onBack={() => setScreen({ name: 'list' })}
                 />
