@@ -25,7 +25,7 @@ const apiFetch = async (url, options = {}) => {
 const USERS_PAGE_SIZE = 25;
 
 const realApi = {
-  // GET /api/ad-links -> { adLinks:[{id,code,comment?}], bot }
+  // GET /api/ad-links -> { adLinks:[{id,code,comment?,bot}], bot }
   list: () => apiFetch('/api/ad-links'),
   // POST /api/ad-links (тело {} или {comment}) -> создаёт ссылку
   create: () => apiFetch('/api/ad-links', { method: 'POST', body: JSON.stringify({}) }),
@@ -73,7 +73,7 @@ const api = realApi;
 // =============================================================
 // УТИЛИТЫ
 // =============================================================
-function linkUrl(bot, code) { return `https://t.me/${bot}?start=${code}`; }
+function linkUrl(bot, link) { return `https://t.me/${link.bot || bot}?start=${link.code}`; }
 
 function formatDateTime(iso) {
   if (!iso) return '—';
@@ -120,7 +120,7 @@ function CommentModal({ link, bot, onClose, onSave }) {
             <h3><i className="fas fa-comment-dots" aria-hidden="true"></i> Комментарий к ссылке</h3>
             <button type="button" className="modal-close" onClick={onClose} aria-label="Закрыть"><i className="fas fa-xmark"></i></button>
           </div>
-          <a className="modal-link" href={linkUrl(bot, link.code)} target="_blank" rel="noreferrer">{linkUrl(bot, link.code)}</a>
+          <a className="modal-link" href={linkUrl(bot, link)} target="_blank" rel="noreferrer">{linkUrl(bot, link)}</a>
           <textarea className="textarea" value={value} onChange={(e) => setValue(e.target.value)} rows={4} placeholder="Введите комментарий" autoFocus />
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Отмена</button>
@@ -202,7 +202,7 @@ function LinksScreen({ onOpenStats, showToast }) {
   };
 
   const copyLink = async (link) => {
-    const url = linkUrl(bot, link.code);
+    const url = linkUrl(bot, link);
     try {
       await navigator.clipboard.writeText(url);
       showToast('success', 'Ссылка скопирована');
@@ -280,7 +280,7 @@ function LinksScreen({ onOpenStats, showToast }) {
                         <div className="ltrow" key={l.id} onDoubleClick={() => onOpenStats(l, bot)}>
                           <div className="lcell">
                             <button type="button" className="link-btn" onClick={() => copyLink(l)} title="Копировать ссылку">
-                              <span className="link-text">{linkUrl(bot, l.code)}</span>
+                              <span className="link-text">{linkUrl(bot, l)}</span>
                               <i className="fas fa-copy link-copy" aria-hidden="true"></i>
                             </button>
                           </div>
@@ -493,7 +493,7 @@ function StatsScreen({ link, bot, onBack, showToast }) {
           <button type="button" className="btn btn-secondary" onClick={onBack}>
             <i className="fas fa-arrow-left" aria-hidden="true"></i> Назад
           </button>
-          <a className="stats-link" href={linkUrl(bot, link.code)} target="_blank" rel="noreferrer">{linkUrl(bot, link.code)}</a>
+          <a className="stats-link" href={linkUrl(bot, link)} target="_blank" rel="noreferrer">{linkUrl(bot, link)}</a>
         </div>
 
         {loading && <div className="state"><i className="fas fa-spinner fa-spin"></i><span>Загрузка…</span></div>}
