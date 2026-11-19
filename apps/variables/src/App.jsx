@@ -112,6 +112,7 @@ const VAR_TO_BLOCK = {
   IS_REGISTRATION_OPENED: ['other'],
   OPERATOR_LINK: ['other'],
   DEAL_ACTIVE_TIME: ['other'],
+  SELL_DEALS_GROUP_CHAT_ID: ['other'],
 };
 
 // Лейблы криптовалют и фиатов (отображаемые имена).
