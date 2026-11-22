@@ -411,7 +411,7 @@ function ProfileBody({ initialUser, roles, currentRole, templates, onClose, onUp
             </div>
             <div className="prow"><span className="k">Кол-во обменов</span><span className="v">{fmtNum(user.dealsCount)}</span></div>
             <div className="prow"><span className="k">Общий объём</span>
-              <span className="v">{loadingRef ? '…' : `${fmtNum(ref?.totalRubAmount)} RUB · ${fmtNum(ref?.totalBynAmount)} BYN`}</span>
+              <span className="v">{loadingRef ? '…' : `${fmtNum(ref?.totalRubAmount)} RUB · ${fmtNum(ref?.totalBynAmount)} BYN · ${fmtNum(ref?.totalKztAmount)} KZT`}</span>
             </div>
             <div className="prow"><span className="k">Последняя активность</span><span className="v">{user.lastActivityDate || '—'}</span></div>
             <div className="prow"><span className="k">Выигрышей в лотерею</span><span className="v">{fmtNum(user.lotteryCount)}</span></div>
