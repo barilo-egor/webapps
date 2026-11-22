@@ -89,6 +89,7 @@ const VAR_TO_BLOCK = {
   MAX_AUTO_CONFIRM_AMOUNT: ['financial', 'fin_other'],
   REFERRAL_PERCENT: ['financial', 'fin_other'],
   PROBABILITY: ['financial', 'fin_other'],
+  FIAT_CURRENCY_ENABLED: ['financial', 'fin_other'],
   // Промокод
   PROMO_CODE_DISCOUNT: ['promo'],
   PROMO_CODE_NAME: ['promo'],
@@ -125,9 +126,12 @@ const CRYPTO_LABEL = {
   LITECOIN: 'LTC',
   MONERO: 'XMR',
 };
+const FIAT_CURRENCY_ENABLED = 'FIAT_CURRENCY_ENABLED';
+
 const FIAT_LABEL = {
   RUB: 'RUB',
   BYN: 'BYN',
+  UAH: 'UAH',
   USD: 'USD',
   EUR: 'EUR',
 };
@@ -158,13 +162,17 @@ function buildValueMap(values) {
 function collectAxes(values) {
   const cryptos = new Set();
   const fiats = new Set();
+  const allFiats = new Set();
   for (const v of values) {
     if (v.cryptoCurrency) cryptos.add(v.cryptoCurrency);
-    if (v.fiatCurrency) fiats.add(v.fiatCurrency);
+    if (v.fiatCurrency) {
+      allFiats.add(v.fiatCurrency);
+      if (v.variableType !== FIAT_CURRENCY_ENABLED) fiats.add(v.fiatCurrency);
+    }
   }
   // Сортируем по предпочтительному порядку (BTC, USDT, ETH, TRX, LTC, XMR)
   const cryptoOrder = ['BITCOIN', 'USDT', 'ETHEREUM', 'TRON', 'LITECOIN', 'MONERO'];
-  const fiatOrder = ['RUB', 'BYN', 'USD', 'EUR'];
+  const fiatOrder = ['RUB', 'BYN', 'UAH', 'USD', 'EUR'];
   const sortBy = (arr, order) => {
     return [...arr].sort((a, b) => {
       const ia = order.indexOf(a);
@@ -178,6 +186,7 @@ function collectAxes(values) {
   return {
     cryptos: sortBy([...cryptos], cryptoOrder),
     fiats: sortBy([...fiats], fiatOrder),
+    allFiats: sortBy([...allFiats], fiatOrder),
   };
 }
 
@@ -292,6 +301,20 @@ function useFieldState(initialValue) {
 // SCALAR FIELD — одно поле (число/строка/boolean)
 // =============================================================
 
+function BoolSwitch({ value, onChange, disabled }) {
+  return (
+      <label className="switch">
+        <input
+            type="checkbox"
+            checked={String(value) === 'true'}
+            onChange={(e) => onChange(String(e.target.checked))}
+            disabled={disabled}
+        />
+        <span className="slider" />
+      </label>
+  );
+}
+
 function ScalarField({ type, savedValue, onSave }) {
   const javaType = type.config.type;
   const isBool = javaType === 'java.lang.Boolean';
@@ -338,17 +361,9 @@ function ScalarField({ type, savedValue, onSave }) {
   return (
       <div className="variable-row">
         <div className="variable-label">{type.displayName}</div>
-        <div className="variable-control">
+        <div className={isBool ? 'variable-control control-bool' : 'variable-control'}>
           {isBool ? (
-              <select
-                  value={fs.currentValue}
-                  onChange={(e) => fs.setCurrentValue(e.target.value)}
-                  disabled={busy}
-                  className="select"
-              >
-                <option value="true">Да</option>
-                <option value="false">Нет</option>
-              </select>
+              <BoolSwitch value={fs.currentValue} onChange={fs.setCurrentValue} disabled={busy} />
           ) : (
               <input
                   type="text"
@@ -384,6 +399,7 @@ function RowCell({ type, savedValue, coords, onSave }) {
       javaType === 'java.lang.Integer' ||
       javaType === 'java.lang.Long';
   const isString = javaType === 'java.lang.String';
+  const isBool = javaType === 'java.lang.Boolean';
 
   const fs = useFieldState(savedValue);
   const [busy, setBusy] = useState(false);
@@ -413,16 +429,20 @@ function RowCell({ type, savedValue, coords, onSave }) {
   };
 
   return (
-      <div className="cell-with-actions">
-        <div className="cell-input-wrap">
-          <input
-              type="text"
-              value={fs.currentValue}
-              onChange={handleInputChange}
-              inputMode={isString ? 'text' : inputModeForJavaType(javaType)}
-              disabled={busy}
-              className="input cell-input"
-          />
+      <div className={isBool ? 'cell-with-actions control-bool' : 'cell-with-actions'}>
+        <div className={isBool ? 'cell-input-wrap cell-switch-wrap' : 'cell-input-wrap'}>
+          {isBool ? (
+              <BoolSwitch value={fs.currentValue} onChange={fs.setCurrentValue} disabled={busy} />
+          ) : (
+              <input
+                  type="text"
+                  value={fs.currentValue}
+                  onChange={handleInputChange}
+                  inputMode={isString ? 'text' : inputModeForJavaType(javaType)}
+                  disabled={busy}
+                  className="input cell-input"
+              />
+          )}
           {isString && fs.currentValue && (
               <div className="cell-tooltip" role="tooltip">
                 {fs.currentValue}
@@ -449,7 +469,8 @@ function RowField({ type, valuesMap, axes, onSaveCell }) {
   // Определяем по какой оси разворачиваем
   const isByCrypto = config.hasCryptoCurrency;
   const isByFiat = config.hasFiatCurrency;
-  const items = isByCrypto ? axes.cryptos : isByFiat ? axes.fiats : [];
+  const fiatItems = type.id === FIAT_CURRENCY_ENABLED ? axes.allFiats : axes.fiats;
+  const items = isByCrypto ? axes.cryptos : isByFiat ? fiatItems : [];
   const labelMap = isByCrypto ? CRYPTO_LABEL : FIAT_LABEL;
   // Для строковых значений (адреса кошельков) применяем фикс. ширину ячейки.
   // Для чисел (фиаты, крипты) — равномерное растяжение по ширине контейнера.
