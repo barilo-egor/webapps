@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { myChatId, request } from '../../shared/request.js';
+import { ConfirmModal, Modal } from './Modal.jsx';
+import SecureDetails from './SecureDetails.jsx';
 
 const API = '/api/details';
 const PAGE_SIZE = 20;
@@ -48,75 +50,6 @@ function useToast() {
   ) : null;
 
   return { show, node };
-}
-
-/* ---------- Модальное окно ---------- */
-function Modal({ icon, title, onClose, busy, children, foot }) {
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape' && !busy) onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [busy, onClose]);
-
-  return (
-    <div
-      className="overlay"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
-      }}
-    >
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="modal-head">
-          <span className="modal-icon">
-            <i className={icon} />
-          </span>
-          <h2>{title}</h2>
-          <button
-            type="button"
-            className="modal-x"
-            onClick={onClose}
-            disabled={busy}
-            aria-label="Закрыть"
-          >
-            <i className="fa-solid fa-xmark" />
-          </button>
-        </div>
-        <div className="modal-body">{children}</div>
-        {foot && <div className="modal-foot">{foot}</div>}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Модалка подтверждения ---------- */
-function ConfirmModal({ title, message, confirmLabel, danger, busy, onConfirm, onClose }) {
-  return (
-    <Modal
-      icon={danger ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-question'}
-      title={title}
-      busy={busy}
-      onClose={onClose}
-      foot={
-        <>
-          <button type="button" className="btn" onClick={onClose} disabled={busy}>
-            Отмена
-          </button>
-          <button
-            type="button"
-            className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
-            onClick={onConfirm}
-            disabled={busy}
-          >
-            {busy ? 'Выполнение…' : confirmLabel}
-          </button>
-        </>
-      }
-    >
-      <div>{message}</div>
-    </Modal>
-  );
 }
 
 /* ---------- Модалка создания / редактирования реквизита ---------- */
@@ -429,6 +362,7 @@ function DetailsFormModal({ initial, paymentTypes, categories, busy, onSubmit, o
 
 /* ==================== Основное приложение ==================== */
 export default function App() {
+  const [tab, setTab] = useState('regular');
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -642,7 +576,7 @@ export default function App() {
           </span>
           <div>
             <h1>Управление реквизитами</h1>
-            {lastUpdated && (
+            {tab === 'regular' && lastUpdated && (
               <div className="last-update">
                 <i className="fa-regular fa-clock" />
                 <span>Последнее обновление: {lastUpdated}</span>
@@ -651,184 +585,209 @@ export default function App() {
           </div>
         </div>
 
-        <div className="header-actions">
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            <i className="fa-solid fa-plus" />
-            <span>Создать реквизит</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-icon"
-            onClick={() => loadList(page)}
-            disabled={loading}
-            title="Обновить"
-            aria-label="Обновить"
-          >
-            <i className={`fa-solid fa-rotate${loading ? ' fa-spin' : ''}`} />
-          </button>
-        </div>
+        {tab === 'regular' && (
+          <div className="header-actions">
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              <i className="fa-solid fa-plus" />
+              <span>Создать реквизит</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-icon"
+              onClick={() => loadList(page)}
+              disabled={loading}
+              title="Обновить"
+              aria-label="Обновить"
+            >
+              <i className={`fa-solid fa-rotate${loading ? ' fa-spin' : ''}`} />
+            </button>
+          </div>
+        )}
       </header>
 
-      {error && (
-        <div className="error-banner">
-          <span>{error}</span>
-          <button type="button" className="btn" onClick={() => loadList(page)}>
-            Повторить
-          </button>
-        </div>
-      )}
+      <div className="tabs page-tabs">
+        <button
+          type="button"
+          className={`tab-btn${tab === 'regular' ? ' active' : ''}`}
+          onClick={() => setTab('regular')}
+        >
+          Обычные
+        </button>
+        <button
+          type="button"
+          className={`tab-btn${tab === 'secure' ? ' active' : ''}`}
+          onClick={() => setTab('secure')}
+        >
+          Защитные
+        </button>
+      </div>
 
-      <div className="card">
-        {loading && items.length === 0 ? (
-          <div className="state-box">
-            <i className="fa-solid fa-spinner fa-spin" />
-            <span>Загрузка реквизитов…</span>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="state-box">
-            <i className="fa-regular fa-folder-open" />
-            <span>Реквизитов пока нет</span>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  {COLUMNS.map((c) => {
-                    const active = sort && sort.field === c.key;
-                    const ico = !active ? 'fa-solid fa-sort sort-ico dim'
-                      : sort.dir === 'asc' ? 'fa-solid fa-arrow-up-long sort-ico'
-                        : 'fa-solid fa-arrow-down-long sort-ico';
-                    return (
-                      <th
-                        key={c.key}
-                        title={c.title}
-                        className={`sortable${active ? ' active' : ''}`}
-                        onClick={() => toggleSort(c.key)}
-                      >
-                        {c.icon ? <i className={c.icon} /> : c.label}
-                        <i className={ico} />
-                      </th>
-                    );
-                  })}
-                  <th style={{ textAlign: 'right' }}>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((row) => (
-                  <tr
-                    key={row.pid}
-                    onDoubleClick={(e) => {
-                      if (e.target.closest('button, input, label')) return;
-                      openEdit(row);
-                    }}
-                  >
-                    <td>
-                      <label className="switch">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(row.isOn)}
-                          disabled={togglingPid === row.pid}
-                          onChange={(e) => handleToggle(row, e.target.checked)}
-                        />
-                        <span className="slider" />
-                      </label>
-                    </td>
-                    <td>
-                      <span
-                        className="short-name"
-                        onClick={() => openEdit(row)}
-                        title="Редактировать"
-                      >
-                        {row.shortName}
-                      </span>
-                    </td>
-                    <td className="requisite-cell mono">{row.requisite}</td>
-                    <td className="mono">
-                      {row.targetAmount > 0 ? (
-                        <span className="badge badge-target">{row.targetAmount}</span>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="mono">{row.receivedAmount ?? 0}</td>
-                    <td className="mono">{row.reserveAmount ?? 0}</td>
-                    <td className="mono">
-                      {row.rangeFrom ? `${row.rangeFrom} – ${row.rangeTo}` : '—'}
-                    </td>
-                    <td className="mono">{row.minDealsCount ?? 0}</td>
-                    <td className="mono">{row.priority ?? 0}</td>
-                    <td>
-                      <div className="row-actions">
-                        <button
-                          type="button"
-                          className="btn btn-icon"
-                          title="Редактировать"
-                          onClick={() => openEdit(row)}
-                        >
-                          <i className="fa-solid fa-pen" />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-icon"
-                          title="Сброс сумм"
-                          onClick={() => handleResetClick(row)}
-                        >
-                          <i className="fa-solid fa-rotate-left" />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-icon"
-                          title="Прислать данные реквизита"
-                          onClick={() => handleSendInfo(row)}
-                        >
-                          <i className="fa-regular fa-file-lines" />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-icon danger"
-                          title="Удалить"
-                          onClick={() => handleDeleteClick(row)}
-                        >
-                          <i className="fa-solid fa-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {total > 0 && (
-          <div className="pagination">
-            <span className="mono">
-              Всего: {total} · Страница {page + 1} из {totalPages}
-            </span>
-            <div className="pagination-controls">
-              <button
-                type="button"
-                className="btn"
-                disabled={page === 0 || loading}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                <i className="fa-solid fa-chevron-left" />
-                <span>Назад</span>
-              </button>
-              <button
-                type="button"
-                className="btn"
-                disabled={page + 1 >= totalPages || loading}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                <span>Вперёд</span>
-                <i className="fa-solid fa-chevron-right" />
+      {tab === 'secure' ? (
+        <SecureDetails toast={toast} />
+      ) : (
+        <>
+          {error && (
+            <div className="error-banner">
+              <span>{error}</span>
+              <button type="button" className="btn" onClick={() => loadList(page)}>
+                Повторить
               </button>
             </div>
+          )}
+
+          <div className="card">
+            {loading && items.length === 0 ? (
+              <div className="state-box">
+                <i className="fa-solid fa-spinner fa-spin" />
+                <span>Загрузка реквизитов…</span>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="state-box">
+                <i className="fa-regular fa-folder-open" />
+                <span>Реквизитов пока нет</span>
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      {COLUMNS.map((c) => {
+                        const active = sort && sort.field === c.key;
+                        const ico = !active ? 'fa-solid fa-sort sort-ico dim'
+                          : sort.dir === 'asc' ? 'fa-solid fa-arrow-up-long sort-ico'
+                            : 'fa-solid fa-arrow-down-long sort-ico';
+                        return (
+                          <th
+                            key={c.key}
+                            title={c.title}
+                            className={`sortable${active ? ' active' : ''}`}
+                            onClick={() => toggleSort(c.key)}
+                          >
+                            {c.icon ? <i className={c.icon} /> : c.label}
+                            <i className={ico} />
+                          </th>
+                        );
+                      })}
+                      <th style={{ textAlign: 'right' }}>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((row) => (
+                      <tr
+                        key={row.pid}
+                        onDoubleClick={(e) => {
+                          if (e.target.closest('button, input, label')) return;
+                          openEdit(row);
+                        }}
+                      >
+                        <td>
+                          <label className="switch">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(row.isOn)}
+                              disabled={togglingPid === row.pid}
+                              onChange={(e) => handleToggle(row, e.target.checked)}
+                            />
+                            <span className="slider" />
+                          </label>
+                        </td>
+                        <td>
+                          <span
+                            className="short-name"
+                            onClick={() => openEdit(row)}
+                            title="Редактировать"
+                          >
+                            {row.shortName}
+                          </span>
+                        </td>
+                        <td className="requisite-cell mono">{row.requisite}</td>
+                        <td className="mono">
+                          {row.targetAmount > 0 ? (
+                            <span className="badge badge-target">{row.targetAmount}</span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="mono">{row.receivedAmount ?? 0}</td>
+                        <td className="mono">{row.reserveAmount ?? 0}</td>
+                        <td className="mono">
+                          {row.rangeFrom ? `${row.rangeFrom} – ${row.rangeTo}` : '—'}
+                        </td>
+                        <td className="mono">{row.minDealsCount ?? 0}</td>
+                        <td className="mono">{row.priority ?? 0}</td>
+                        <td>
+                          <div className="row-actions">
+                            <button
+                              type="button"
+                              className="btn btn-icon"
+                              title="Редактировать"
+                              onClick={() => openEdit(row)}
+                            >
+                              <i className="fa-solid fa-pen" />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-icon"
+                              title="Сброс сумм"
+                              onClick={() => handleResetClick(row)}
+                            >
+                              <i className="fa-solid fa-rotate-left" />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-icon"
+                              title="Прислать данные реквизита"
+                              onClick={() => handleSendInfo(row)}
+                            >
+                              <i className="fa-regular fa-file-lines" />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-icon danger"
+                              title="Удалить"
+                              onClick={() => handleDeleteClick(row)}
+                            >
+                              <i className="fa-solid fa-trash" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {total > 0 && (
+              <div className="pagination">
+                <span className="mono">
+                  Всего: {total} · Страница {page + 1} из {totalPages}
+                </span>
+                <div className="pagination-controls">
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={page === 0 || loading}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  >
+                    <i className="fa-solid fa-chevron-left" />
+                    <span>Назад</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={page + 1 >= totalPages || loading}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    <span>Вперёд</span>
+                    <i className="fa-solid fa-chevron-right" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {formTarget && (
         <DetailsFormModal
