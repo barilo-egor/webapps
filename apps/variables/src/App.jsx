@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 
 // =============================================================
@@ -18,7 +18,9 @@ const apiFetch = async (url, options = {}) => {
   if (!res.ok) {
     let detail = '';
     try { detail = await res.text(); } catch {}
-    throw new Error(`${res.status} ${res.statusText}${detail ? ' — ' + detail : ''}`);
+    let message = '';
+    try { message = JSON.parse(detail)?.error || ''; } catch {}
+    throw new Error(message || `${res.status} ${res.statusText}${detail ? ' — ' + detail : ''}`);
   }
   const text = await res.text();
   if (!text) return null;
@@ -30,6 +32,8 @@ const realApi = {
   listTypes: () => apiFetch('/api/variables/types'),
   // GET /api/variables — ТЕКУЩИЕ значения для этого бота
   listValues: () => apiFetch('/api/variables'),
+  // GET /api/constants/fiat — все фиатные валюты в порядке enum
+  listFiats: () => apiFetch('/api/constants/fiat'),
   // POST /api/variables — сохранить значение (для текущего бота)
   save: (payload) =>
       apiFetch('/api/variables', { method: 'POST', body: JSON.stringify(payload) }),
@@ -74,6 +78,8 @@ const VAR_TO_BLOCK = {
   USD_RUB_COURSE: ['financial', 'rates'],
   BYN_RUB_COURSE: ['financial', 'rates'],
   RUB_BYN_COURSE: ['financial', 'rates'],
+  KZT_RUB_COURSE: ['financial', 'rates'],
+  RUB_KZT_COURSE: ['financial', 'rates'],
   // Финансовые / Комиссии
   FIX: ['financial', 'commissions'],
   FIX_COMMISSION: ['financial', 'commissions'],
@@ -126,12 +132,12 @@ const CRYPTO_LABEL = {
   LITECOIN: 'LTC',
   MONERO: 'XMR',
 };
-const FIAT_CURRENCY_ENABLED = 'FIAT_CURRENCY_ENABLED';
 
 const FIAT_LABEL = {
   RUB: 'RUB',
   BYN: 'BYN',
   UAH: 'UAH',
+  KZT: 'KZT',
   USD: 'USD',
   EUR: 'EUR',
 };
@@ -157,22 +163,15 @@ function buildValueMap(values) {
   return map;
 }
 
-/** По значениям собирает уникальные крипты и фиаты которые реально встречаются.
- *  Это нужно чтобы матрицы и строки рисовались по тем валютам что есть на бэке. */
-function collectAxes(values) {
+/** По значениям собирает уникальные крипты, которые реально встречаются.
+ *  Фиаты берутся целиком из enum на бэке, чтобы у каждой валюты была строка для ввода. */
+function collectAxes(values, fiats) {
   const cryptos = new Set();
-  const fiats = new Set();
-  const allFiats = new Set();
   for (const v of values) {
     if (v.cryptoCurrency) cryptos.add(v.cryptoCurrency);
-    if (v.fiatCurrency) {
-      allFiats.add(v.fiatCurrency);
-      if (v.variableType !== FIAT_CURRENCY_ENABLED) fiats.add(v.fiatCurrency);
-    }
   }
   // Сортируем по предпочтительному порядку (BTC, USDT, ETH, TRX, LTC, XMR)
   const cryptoOrder = ['BITCOIN', 'USDT', 'ETHEREUM', 'TRON', 'LITECOIN', 'MONERO'];
-  const fiatOrder = ['RUB', 'BYN', 'UAH', 'USD', 'EUR'];
   const sortBy = (arr, order) => {
     return [...arr].sort((a, b) => {
       const ia = order.indexOf(a);
@@ -185,8 +184,7 @@ function collectAxes(values) {
   };
   return {
     cryptos: sortBy([...cryptos], cryptoOrder),
-    fiats: sortBy([...fiats], fiatOrder),
-    allFiats: sortBy([...allFiats], fiatOrder),
+    fiats,
   };
 }
 
@@ -217,6 +215,41 @@ function Toast({ message, onDone }) {
   return (
       <div className="toast">
         {message}
+      </div>
+  );
+}
+
+// =============================================================
+// ОКНО ОШИБКИ СОХРАНЕНИЯ
+// =============================================================
+
+const SaveErrorContext = createContext(() => {});
+
+/** Первая строка сообщения — суть ошибки, остальные выводятся списком. */
+function ErrorDialog({ message, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const [lead, ...items] = String(message).split('\n').filter((line) => line.trim());
+  return (
+      <div className="error-dialog-overlay" onClick={onClose}>
+        <div className="error-dialog" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+          <div className="error-dialog-title">
+            <i className="fas fa-exclamation-circle" aria-hidden="true"></i>
+            Не удалось сохранить
+          </div>
+          <p className="error-dialog-lead">{lead}</p>
+          {items.length > 0 && (
+              <ul className="error-dialog-list">
+                {items.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+          )}
+          <button type="button" className="btn error-dialog-close" onClick={onClose}>
+            Понятно
+          </button>
+        </div>
       </div>
   );
 }
@@ -326,6 +359,7 @@ function ScalarField({ type, savedValue, onSave }) {
 
   const fs = useFieldState(savedValue);
   const [busy, setBusy] = useState(false);
+  const showError = useContext(SaveErrorContext);
 
   const handleInputChange = (e) => {
     const v = e.target.value;
@@ -346,7 +380,7 @@ function ScalarField({ type, savedValue, onSave }) {
       await onSave(fs.currentValue, global);
       fs.commit(fs.currentValue);
     } catch (err) {
-      alert('Не удалось сохранить: ' + (err.message || err));
+      showError(err.message || 'Не удалось сохранить');
     } finally {
       setBusy(false);
     }
@@ -403,6 +437,7 @@ function RowCell({ type, savedValue, coords, onSave }) {
 
   const fs = useFieldState(savedValue);
   const [busy, setBusy] = useState(false);
+  const showError = useContext(SaveErrorContext);
 
   const handleInputChange = (e) => {
     const v = e.target.value;
@@ -422,7 +457,7 @@ function RowCell({ type, savedValue, coords, onSave }) {
       await onSave(fs.currentValue, global, coords);
       fs.commit(fs.currentValue);
     } catch (err) {
-      alert('Не удалось сохранить: ' + (err.message || err));
+      showError(err.message || 'Не удалось сохранить');
     } finally {
       setBusy(false);
     }
@@ -469,8 +504,7 @@ function RowField({ type, valuesMap, axes, onSaveCell }) {
   // Определяем по какой оси разворачиваем
   const isByCrypto = config.hasCryptoCurrency;
   const isByFiat = config.hasFiatCurrency;
-  const fiatItems = type.id === FIAT_CURRENCY_ENABLED ? axes.allFiats : axes.fiats;
-  const items = isByCrypto ? axes.cryptos : isByFiat ? fiatItems : [];
+  const items = isByCrypto ? axes.cryptos : isByFiat ? axes.fiats : [];
   const labelMap = isByCrypto ? CRYPTO_LABEL : FIAT_LABEL;
   // Для строковых значений (адреса кошельков) применяем фикс. ширину ячейки.
   // Для чисел (фиаты, крипты) — равномерное растяжение по ширине контейнера.
@@ -717,9 +751,12 @@ function CollapsibleSection({ icon, label, level = 0, defaultOpen = false, child
 export default function App() {
   const [types, setTypes] = useState([]);
   const [values, setValues] = useState([]);
+  const [fiats, setFiats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+  const [saveError, setSaveError] = useState(null);
+  const closeSaveError = useCallback(() => setSaveError(null), []);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -734,9 +771,10 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const [ts, vs] = await Promise.all([api.listTypes(), api.listValues()]);
+      const [ts, vs, fs] = await Promise.all([api.listTypes(), api.listValues(), api.listFiats()]);
       setTypes(Array.isArray(ts) ? ts : []);
       setValues(Array.isArray(vs) ? vs : []);
+      setFiats(Array.isArray(fs) ? fs.map((f) => f.name) : []);
     } catch (err) {
       setError(err.message || 'Не удалось загрузить переменные');
     } finally {
@@ -749,7 +787,7 @@ export default function App() {
   }, [loadAll]);
 
   const valuesMap = useMemo(() => buildValueMap(values), [values]);
-  const axes = useMemo(() => collectAxes(values), [values]);
+  const axes = useMemo(() => collectAxes(values, fiats), [values, fiats]);
 
   // Сохранение одной ячейки/переменной
   const handleSaveCell = useCallback(async (value, global, coords) => {
@@ -823,6 +861,7 @@ export default function App() {
   }, [types]);
 
   return (
+      <SaveErrorContext.Provider value={setSaveError}>
       <div className="app">
         <div className="container">
           <header className="page-header">
@@ -917,6 +956,8 @@ export default function App() {
         {toast && (
             <Toast message={toast.message} onDone={() => setToast(null)} />
         )}
+        {saveError && <ErrorDialog message={saveError} onClose={closeSaveError} />}
       </div>
+      </SaveErrorContext.Provider>
   );
 }
