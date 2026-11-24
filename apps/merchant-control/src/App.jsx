@@ -26,7 +26,7 @@ const API = '/api/merchant-control';
 
 /* ---------- Ответ бэка → строка таблицы ----------
    Живой ответ dev1 (07.10.2026):
-     { merchant: "EXTASY_PAY", totalAmount: 12346,
+     { merchant: "EXTASY_PAY", totalAmounts: { RUB: 12346, KZT: 350000 },
        dealLastDate: "05.06.2026 21:50:07",              // UTC+3; у мерчанта без сделок поля нет
        dealIdsByAppId: { "rce-dev3": [115, 115] } }      // номера сделок по ботам
    Отдельного поля с количеством нет — «Сделок» = сколько номеров во всех ботах. */
@@ -35,17 +35,24 @@ function dealCount(byApp) {
   return Object.values(byApp).reduce((n, ids) => n + (Array.isArray(ids) ? ids.length : 0), 0);
 }
 
+function toSums(totalAmounts) {
+  if (!totalAmounts || typeof totalAmounts !== 'object') return [];
+  return Object.entries(totalAmounts)
+      .map(([currency, amount]) => ({ currency, amount: Number(amount) }))
+      .filter((s) => s.amount > 0);
+}
+
 function toRow(raw) {
   return {
     merchant: raw.merchant,
     count: dealCount(raw.dealIdsByAppId),
-    sum: Number(raw.totalAmount ?? 0),
+    sums: toSums(raw.totalAmounts),
     dealLastDate: raw.dealLastDate || null,
     readAt: Date.now(), // «Данные на» — когда строка прочитана
   };
 }
 
-const emptyRow = (merchant) => ({ merchant, count: 0, sum: 0, dealLastDate: null, readAt: Date.now() });
+const emptyRow = (merchant) => ({ merchant, count: 0, sums: [], dealLastDate: null, readAt: Date.now() });
 
 /* dealLastDate из ответа (UTC+3, «дд.мм.гггг чч:мм:сс») → UTC+0 ISO для запроса.
    Понимает и ISO-вид (2026-06-05T21:50:07[.мс]) на случай, если бэк сменит формат.
@@ -73,7 +80,9 @@ export function mskToUtc(value) {
 }
 
 /* ---------- Форматирование ---------- */
-const fmtSum = (v) => `${Number(v || 0).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
+const fmtSum = ({ currency, amount }, symbols) =>
+    `${amount.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ${symbols[currency] || currency}`;
+const fmtSums = (sums, symbols) => (sums.length ? sums.map((s) => fmtSum(s, symbols)).join(', ') : '—');
 
 function fmtTime(ms) {
   const d = new Date(ms);
@@ -100,6 +109,23 @@ function useMerchantNames() {
   return names;
 }
 
+/* ---------- Справочник фиатных валют: код → символ ---------- */
+function useFiatSymbols() {
+  const [symbols, setSymbols] = useState({});
+  useEffect(() => {
+    request('/api/constants/fiat')
+        .then((d) => {
+          const map = {};
+          (Array.isArray(d) ? d : []).forEach((f) => {
+            if (f?.name) map[f.name] = f.symbol || f.name;
+          });
+          setSymbols(map);
+        })
+        .catch(() => {});
+  }, []);
+  return symbols;
+}
+
 /* ---------- Тост ---------- */
 function useToast() {
   const [toast, setToast] = useState(null);
@@ -114,7 +140,7 @@ function useToast() {
 }
 
 /* ---------- Подтверждение сброса ---------- */
-function ResetModal({ row, name, busy, onConfirm, onClose }) {
+function ResetModal({ row, name, symbols, busy, onConfirm, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
     window.addEventListener('keydown', onKey);
@@ -129,7 +155,7 @@ function ResetModal({ row, name, busy, onConfirm, onClose }) {
           </div>
           <div className="modal-body">
             <p>Сбросить историю сделок мерчанта <b>{name}</b>?</p>
-            <p>Будут удалены <b>{row.count}</b> записей на сумму <b>{fmtSum(row.sum)}</b> — по всем ботам.</p>
+            <p>Будут удалены <b>{row.count}</b> записей на сумму <b>{fmtSums(row.sums, symbols)}</b> — по всем ботам.</p>
             <p className="modal-note">Сами сделки не удаляются — удаляются только записи учёта. Действие необратимо.</p>
           </div>
           <div className="modal-foot">
@@ -146,6 +172,7 @@ function ResetModal({ row, name, busy, onConfirm, onClose }) {
 /* ==================== Приложение ==================== */
 export default function App() {
   const names = useMerchantNames();
+  const symbols = useFiatSymbols();
   const { show: showToast, node: toastNode } = useToast();
 
   const [rows, setRows] = useState([]);
@@ -322,7 +349,11 @@ export default function App() {
                         <td className="c-num">{i + 1}</td>
                         <td className="c-name" title={r.merchant}>{nameOf(r.merchant)}</td>
                         <td className="c-right mono">{r.count}</td>
-                        <td className="c-right mono c-sum">{fmtSum(r.sum)}</td>
+                        <td className="c-right mono c-sum">
+                          {r.sums.length
+                              ? r.sums.map((s) => <div key={s.currency}>{fmtSum(s, symbols)}</div>)
+                              : '—'}
+                        </td>
                         <td className="mono c-time">{fmtTime(r.readAt)}</td>
                         <td className="c-act">
                           <div className="row-actions">
@@ -353,6 +384,7 @@ export default function App() {
             <ResetModal
                 row={resetRow}
                 name={nameOf(resetRow.merchant)}
+                symbols={symbols}
                 busy={rowBusy[resetRow.merchant] === 'reset'}
                 onConfirm={confirmReset}
                 onClose={() => setResetRow(null)}
