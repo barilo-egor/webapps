@@ -35,7 +35,9 @@
     "dev:merchants": "npm run dev -w @webapps/merchants",
     "build:merchants": "npm run build -w @webapps/merchants",
     "dev:details": "npm run dev -w @webapps/details",
-    "build:details": "npm run build -w @webapps/details"
+    "build:details": "npm run build -w @webapps/details",
+    "dev:reviews": "npm run dev -w @webapps/reviews",
+    "build:reviews": "npm run build -w @webapps/reviews"
   },
 
   "devDependencies": {

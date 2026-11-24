@@ -1,0 +1,587 @@
+:root {
+  --tg-bg: var(--tg-theme-bg-color, #17212b);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #232e3c);
+  --tg-text: var(--tg-theme-text-color, #f5f5f5);
+  --tg-hint: var(--tg-theme-hint-color, #90a4b8);
+  --tg-link: var(--tg-theme-link-color, #6ab3f3);
+  --tg-button: var(--tg-theme-button-color, #4a90d9);
+  --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-danger: #e26363;
+  --tg-success: #4bb371;
+  --tg-warning: #e0a83a;
+  --tg-border: color-mix(in srgb, var(--tg-text) 10%, transparent);
+  --tg-row-hover: color-mix(in srgb, var(--tg-text) 4%, transparent);
+  --tg-radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app {
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Шапка ---- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.header .icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--tg-button);
+  color: var(--tg-button-text);
+  font-size: 16px;
+}
+
+.header h1 {
+  font-size: 19px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.last-update {
+  font-size: 12px;
+  color: var(--tg-hint);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--tg-border);
+  background: var(--tg-secondary-bg);
+  color: var(--tg-text);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--tg-button);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--tg-button);
+  border-color: var(--tg-button);
+  color: var(--tg-button-text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 9px;
+}
+
+.btn-icon.danger:hover:not(:disabled) {
+  border-color: var(--tg-danger);
+  color: var(--tg-danger);
+}
+
+/* ---- Карточка / таблица ---- */
+.card {
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius);
+  overflow: hidden;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 780px;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--tg-border);
+  vertical-align: middle;
+}
+
+th {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tg-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+tbody tr {
+  transition: background 0.12s;
+}
+
+tbody tr:hover {
+  background: var(--tg-row-hover);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* ---- Пагинация ---- */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--tg-border);
+  font-size: 13px;
+  color: var(--tg-hint);
+  flex-wrap: wrap;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Состояния ---- */
+.state-box {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--tg-hint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.state-box i {
+  font-size: 26px;
+  opacity: 0.7;
+}
+
+.error-banner {
+  padding: 12px 14px;
+  border-radius: var(--tg-radius);
+  background: color-mix(in srgb, var(--tg-danger) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tg-danger) 40%, transparent);
+  color: var(--tg-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ---- Модальное окно ---- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--tg-border);
+}
+
+.modal-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--tg-button) 20%, transparent);
+  color: var(--tg-link);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.modal-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.modal-x {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tg-hint);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.modal-x:hover:not(:disabled) {
+  color: var(--tg-text);
+  background: var(--tg-row-hover);
+}
+
+.modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-foot {
+  padding: 12px 16px;
+  border-top: 1px solid var(--tg-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---- Вкладки привязки ---- */
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--tg-bg);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--tg-border);
+}
+
+.tab-btn {
+  flex: 1;
+  height: 32px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--tg-hint);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab-btn.active {
+  background: var(--tg-button);
+  color: var(--tg-button-text);
+}
+
+/* ---- Тост ---- */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  color: var(--tg-text);
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 2000;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+
+.toast.success {
+  border-color: var(--tg-success);
+}
+
+.toast.error {
+  border-color: var(--tg-danger);
+}
+
+@media (max-width: 600px) {
+  .app {
+    padding: 12px 10px 24px;
+  }
+}
+
+/* ---- Вкладки ---- */
+.page-tabs {
+  margin-bottom: 14px;
+}
+/* ---- Интервал публикации ---- */
+.interval-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.interval-label {
+  color: var(--tg-hint);
+  font-size: 13.5px;
+}
+
+.interval-value,
+.interval-input {
+  width: 56px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--tg-border);
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.interval-value {
+  cursor: pointer;
+}
+
+.interval-value:hover:not(:disabled),
+.interval-input:focus {
+  border-color: var(--tg-button);
+  outline: none;
+}
+
+.interval-unit {
+  color: var(--tg-hint);
+  font-size: 13.5px;
+}
+
+.interval-edit {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--tg-hint);
+}
+
+.interval-ico {
+  color: var(--tg-hint);
+}
+
+/* ---- Выделение и массовые действия ---- */
+.selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--tg-border);
+  background: color-mix(in srgb, var(--tg-button) 8%, transparent);
+}
+
+.selection-count {
+  color: var(--tg-link);
+  font-weight: 700;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-success-soft {
+  background: color-mix(in srgb, var(--tg-success) 16%, transparent);
+  border-color: transparent;
+  color: var(--tg-success);
+}
+
+.btn-danger-soft {
+  background: color-mix(in srgb, var(--tg-danger) 16%, transparent);
+  border-color: transparent;
+  color: var(--tg-danger);
+}
+
+.btn-success-soft:hover:not(:disabled) {
+  border-color: var(--tg-success);
+}
+
+.btn-danger-soft:hover:not(:disabled) {
+  border-color: var(--tg-danger);
+}
+
+.btn-danger {
+  background: var(--tg-danger);
+  border-color: var(--tg-danger);
+  color: #ffffff;
+}
+
+/* ---- Таблица отзывов ---- */
+.reviews-table {
+  table-layout: fixed;
+  min-width: 640px;
+}
+
+.col-check {
+  width: 44px;
+}
+
+.col-pid {
+  width: 70px;
+}
+
+.col-chat {
+  width: 130px;
+}
+
+.col-username {
+  width: 160px;
+}
+
+.col-actions {
+  width: 100px;
+}
+
+.username-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-check {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--tg-button);
+  cursor: pointer;
+}
+
+tbody tr.selected {
+  background: color-mix(in srgb, var(--tg-button) 7%, transparent);
+}
+
+.review-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.username {
+  color: var(--tg-link);
+  text-decoration: none;
+}
+
+.username:hover {
+  text-decoration: underline;
+}
+
+.dim {
+  color: var(--tg-hint);
+}
+
+.btn-icon.success {
+  border-color: transparent;
+  background: transparent;
+  color: var(--tg-success);
+}
+
+.btn-icon.danger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--tg-danger);
+}
+
+.btn-icon.success:hover:not(:disabled) {
+  border-color: var(--tg-success);
+}
+
+@media (max-width: 600px) {
+  .selection-bar {
+    flex-wrap: wrap;
+  }
+}
