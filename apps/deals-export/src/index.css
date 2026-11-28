@@ -1,0 +1,344 @@
+:root {
+  --tg-bg: var(--tg-theme-bg-color, #17212b);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #232e3c);
+  --tg-text: var(--tg-theme-text-color, #f5f5f5);
+  --tg-hint: var(--tg-theme-hint-color, #90a4b8);
+  --tg-link: var(--tg-theme-link-color, #6ab3f3);
+  --tg-button: var(--tg-theme-button-color, #4a90d9);
+  --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-danger: #e26363;
+  --tg-success: #4bb371;
+  --tg-warning: #e0a83a;
+  --tg-border: color-mix(in srgb, var(--tg-text) 10%, transparent);
+  --tg-row-hover: color-mix(in srgb, var(--tg-text) 4%, transparent);
+  --tg-radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app {
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.header .icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--tg-button);
+  color: var(--tg-button-text);
+  font-size: 16px;
+}
+
+.header h1 {
+  font-size: 19px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--tg-border);
+  background: var(--tg-secondary-bg);
+  color: var(--tg-text);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--tg-button);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--tg-button);
+  border-color: var(--tg-button);
+  color: var(--tg-button-text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.state-box i {
+  font-size: 26px;
+  opacity: 0.7;
+}
+
+.toast {
+  position: fixed;
+  bottom: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  color: var(--tg-text);
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 2000;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+
+.toast.success {
+  border-color: var(--tg-success);
+}
+
+.toast.error {
+  border-color: var(--tg-danger);
+}
+
+.app {
+    padding: 12px 10px 24px;
+  }
+
+.header {
+  display: flex;
+  align-items: center;
+}
+
+.header h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header h1 i {
+  color: var(--tg-success);
+}
+
+.card {
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius);
+}
+
+.state-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: var(--tg-hint);
+  text-align: center;
+}
+
+.state-box i {
+  font-size: 28px;
+}
+
+.state-error i {
+  color: var(--tg-danger);
+}
+
+.notice {
+  color: var(--tg-hint);
+  font-size: 13px;
+}
+
+.section {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-head i {
+  color: var(--tg-button);
+  width: 18px;
+  text-align: center;
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.section-hint {
+  color: var(--tg-hint);
+  font-size: 12.5px;
+  margin-top: -4px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--tg-hint);
+}
+
+.field-error {
+  color: var(--tg-danger);
+  font-size: 12.5px;
+}
+
+.input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--tg-border);
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-family: inherit;
+  font-size: 14px;
+  color-scheme: dark light;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--tg-button);
+}
+
+.period {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 420px) {
+  .period {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--tg-border);
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.chip:hover {
+  border-color: var(--tg-button);
+}
+
+.chip.active {
+  background: var(--tg-button);
+  border-color: var(--tg-button);
+  color: var(--tg-button-text);
+}
+
+.link-btn {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--tg-link);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.columns-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.submit-bar {
+  position: sticky;
+  bottom: 0;
+  padding: 10px 0 4px;
+  background: var(--tg-bg);
+}
+
+.btn-block {
+  width: 100%;
+  height: 44px;
+  font-size: 15px;
+}
+
+.launched {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 36px 16px;
+  text-align: center;
+}
+
+.launched i {
+  font-size: 30px;
+  color: var(--tg-button);
+}
+
+.launched-text {
+  font-size: 15px;
+  font-weight: 600;
+}
