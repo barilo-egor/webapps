@@ -79,11 +79,13 @@ function defaultColumns(dictionary) {
 
 function fromSettings(settings, dictionary) {
   const f = settings?.filter || {};
+  const today = quickPeriods()[0];
+  const hasPeriod = Boolean(f.from || f.to);
   return {
     filter: {
       ...EMPTY_FILTER,
-      from: fromBackend(f.from),
-      to: fromBackend(f.to),
+      from: hasPeriod ? fromBackend(f.from) : today.from,
+      to: hasPeriod ? fromBackend(f.to) : today.to,
       chatId: f.chatId != null ? String(f.chatId) : '',
       merchantDeals: f.merchantDeals ?? null,
       merchants: f.merchants || [],
@@ -253,9 +255,11 @@ export default function App() {
 
   const periods = useMemo(() => quickPeriods(), []);
 
-  const periodError = filter.from && filter.to && filter.from >= filter.to
-    ? 'Начало периода должно быть раньше конца'
-    : null;
+  const periodError = !filter.from
+    ? 'Укажите начало периода'
+    : filter.to && filter.from >= filter.to
+      ? 'Начало периода должно быть раньше конца'
+      : null;
 
   const submit = async () => {
     if (periodError) {
@@ -348,11 +352,6 @@ export default function App() {
           </Field>
         </div>
         {periodError && <div className="field-error">{periodError}</div>}
-        {(filter.from || filter.to) && (
-          <button type="button" className="link-btn" onClick={() => set({ from: '', to: '' })}>
-            Сбросить период
-          </button>
-        )}
       </Section>
 
       <Section icon="fa-filter" title="Фильтры" hint="Пустой фильтр не применяется.">
