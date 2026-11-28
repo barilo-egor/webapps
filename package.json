@@ -37,7 +37,9 @@
     "dev:details": "npm run dev -w @webapps/details",
     "build:details": "npm run build -w @webapps/details",
     "dev:reviews": "npm run dev -w @webapps/reviews",
-    "build:reviews": "npm run build -w @webapps/reviews"
+    "build:reviews": "npm run build -w @webapps/reviews",
+    "dev:deals-export": "npm run dev -w @webapps/deals-export",
+    "build:deals-export": "npm run build -w @webapps/deals-export"
   },
 
   "devDependencies": {
